@@ -24,6 +24,6 @@
 
 ## Commit & Pull Request Guidelines
 - Follow conventional, action-oriented messages (`fix: improve Franklin self-update`, `feat: add Franklin helper CLI`). Include `@codex` in commit bodies when collaborator access is needed.
-- When authoring commits yourself, append “Co-authored-by: @codex” (or mention `@codex` in the message) to ensure collaborator tracking is preserved.
+- When authoring commits yourself, append a `Co-authored-by: @codex` trailer (per GitHub’s multi-author convention) so collaborator tracking is preserved automatically.
 - Describe PRs with a concise summary, testing notes, and screenshots for UI-facing changes (e.g., MOTD adjustments).
 - Reference related issues/tickets using “Fixes #123” syntax when applicable; ensure `CHANGELOG.md` receives an entry under `[Unreleased]`.

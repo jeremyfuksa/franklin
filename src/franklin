@@ -7,6 +7,7 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 FRANKLIN_ROOT="${FRANKLIN_ROOT:-$SCRIPT_DIR}"
 UPDATE_SCRIPT="$FRANKLIN_ROOT/update-all.sh"
+FRANKLIN_UPDATE_SCRIPT="$FRANKLIN_ROOT/update-franklin.sh"
 CHECK_SCRIPT="$FRANKLIN_ROOT/scripts/check_versions.sh"
 VERSION_SCRIPT="$FRANKLIN_ROOT/scripts/current_franklin_version.sh"
 
@@ -44,6 +45,11 @@ run_update() {
 }
 
 run_update_franklin_only() {
+  if [ -f "$FRANKLIN_UPDATE_SCRIPT" ]; then
+    bash "$FRANKLIN_UPDATE_SCRIPT" "$@"
+    return $?
+  fi
+
   if [ ! -f "$UPDATE_SCRIPT" ]; then
     log_error "update script missing: $UPDATE_SCRIPT"
     return 2
