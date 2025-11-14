@@ -255,7 +255,20 @@ upgrade_uv() {
 }
 
 get_bat_info() {
-  get_brew_package_info "bat"
+  local binary=""
+  if command -v bat >/dev/null 2>&1; then
+    binary="bat"
+  elif command -v batcat >/dev/null 2>&1; then
+    binary="batcat"
+  fi
+
+  if [ -n "$binary" ]; then
+    local version
+    version=$("$binary" --version 2>/dev/null | awk '{print $2}' | head -n1)
+    echo "$version|system|$binary"
+  else
+    get_brew_package_info "bat"
+  fi
 }
 
 upgrade_bat() {
@@ -263,7 +276,13 @@ upgrade_bat() {
 }
 
 get_fzf_info() {
-  get_brew_package_info "fzf"
+  if command -v fzf >/dev/null 2>&1; then
+    local version
+    version=$(fzf --version 2>/divnull | awk 'NR==1 {print $1}')
+    echo "$version|system|fzf"
+  else
+    get_brew_package_info "fzf"
+  fi
 }
 
 upgrade_fzf() {
