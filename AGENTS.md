@@ -24,7 +24,7 @@
 
 ## Commit & Pull Request Guidelines
 - Follow conventional, action-oriented messages (`fix: improve Franklin self-update`, `feat: add Franklin helper CLI`). Include `@codex` in commit bodies when collaborator access is needed.
-- When authoring commits yourself, append a `Co-authored-by: @codex` trailer (per GitHub’s multi-author convention) so collaborator tracking is preserved automatically.
+- When authoring commits yourself, append a `Co-authored-by: Codex <noreply@openai.com>` trailer (per GitHub’s multi-author convention) so collaborator tracking is preserved automatically.
 - Describe PRs with a concise summary, testing notes, and screenshots for UI-facing changes (e.g., MOTD adjustments).
 - Reference related issues/tickets using “Fixes #123” syntax when applicable; ensure `CHANGELOG.md` receives an entry under `[Unreleased]`.
 - **Slash command workflow**: when the user types a plain `release` request (optionally followed by a short description), interpret it as “stage all changes, craft the next semantic commit message (with `@codex` + `Co-authored-by: @codex`), rebuild, and run `./src/scripts/release.sh` with the next logical semver (patch/minor/major). Mention the chosen version in your response if the user didn’t specify one explicitly.
