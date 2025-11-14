@@ -278,7 +278,7 @@ upgrade_bat() {
 get_fzf_info() {
   if command -v fzf >/dev/null 2>&1; then
     local version
-    version=$(fzf --version 2>/divnull | awk 'NR==1 {print $1}')
+    version=$(fzf --version 2>/dev/null | awk 'NR==1 {print $1}')
     echo "$version|system|fzf"
   else
     get_brew_package_info "fzf"

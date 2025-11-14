@@ -31,6 +31,7 @@ and the project aims to follow [Semantic Versioning](https://semver.org/).
 - Color helpers now auto-detect terminal capabilities, falling back to 256-color or basic ANSI palettes when truecolor isn’t supported so Debian installers render cleanly.
 - Truecolor detection now also checks `tput colors` (>= 16777216) so capable Debian terminals get 24-bit badges without needing `COLORTERM=truecolor`.
 - UI color bindings now degrade gracefully: if primary Campfire colors aren’t available (basic ANSI mode), badges fall back to secondary/neutral palettes instead of purple/gray blocks.
+- Fixed a typo in the version audit so `fzf --version` output redirects to `/dev/null` (not `/divnull`), eliminating the Debian warning.
 
 ## [1.4.1] - 2025-11-14
 
