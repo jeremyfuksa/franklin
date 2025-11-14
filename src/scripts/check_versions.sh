@@ -247,7 +247,20 @@ upgrade_brew_package() {
 }
 
 get_uv_info() {
-  get_brew_package_info "uv"
+  local uv_binary=""
+  if command -v uv >/dev/null 2>&1; then
+    uv_binary="$(command -v uv)"
+  elif [ -x "$HOME/.local/bin/uv" ]; then
+    uv_binary="$HOME/.local/bin/uv"
+  fi
+
+  if [ -n "$uv_binary" ]; then
+    local version
+    version=$("$uv_binary" --version 2>/dev/null | awk '{print $2}' | head -n1)
+    echo "$version|system|$uv_binary"
+  else
+    get_brew_package_info "uv"
+  fi
 }
 
 upgrade_uv() {

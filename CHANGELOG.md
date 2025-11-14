@@ -32,6 +32,7 @@ and the project aims to follow [Semantic Versioning](https://semver.org/).
 - Truecolor detection now also checks `tput colors` (>= 16777216) so capable Debian terminals get 24-bit badges without needing `COLORTERM=truecolor`.
 - UI color bindings now degrade gracefully: if primary Campfire colors aren’t available (basic ANSI mode), badges fall back to secondary/neutral palettes instead of purple/gray blocks.
 - Fixed a typo in the version audit so `fzf --version` output redirects to `/dev/null` (not `/divnull`), eliminating the Debian warning.
+- Version audit now detects uv installs from `~/.local/bin/uv`, so Debian installs see uv as “system” once the official installer runs.
 
 ## [1.4.1] - 2025-11-14
 
