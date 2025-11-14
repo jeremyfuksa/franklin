@@ -387,6 +387,182 @@ _motd_render_divider() {
 }
 
 # ==============================================================================
+# Metric Collection / Rendering: Services & Containers
+# ==============================================================================
+
+_motd_detect_service_state() {
+    local service="$1"
+    local state="unknown"
+
+    if [[ -z "$service" ]]; then
+        echo "$state"
+        return
+    fi
+
+    if command -v systemctl >/dev/null 2>&1; then
+        state=$(systemctl is-active "$service" 2>/dev/null || echo "inactive")
+    elif command -v service >/dev/null 2>&1; then
+        if service "$service" status >/dev/null 2>&1; then
+            state="active"
+        else
+            state="inactive"
+        fi
+    elif [[ "$OS_FAMILY" == "macos" || "$OS_FAMILY" == "darwin" ]] && command -v launchctl >/dev/null 2>&1; then
+        if launchctl list | grep -q "$service"; then
+            state="active"
+        else
+            state="inactive"
+        fi
+    fi
+
+    echo "$state"
+}
+
+_motd_simplify_ports() {
+    local ports="$1"
+    [[ -z "$ports" ]] && return
+
+    local -a entries formatted=()
+    IFS=',' read -rA entries <<<"$ports"
+
+    local entry
+    for entry in "${entries[@]}"; do
+        entry="${entry// /}"
+        [[ -z "$entry" ]] && continue
+        if [[ "$entry" == *"/udp"* ]]; then
+            continue
+        fi
+        entry=${entry%/tcp}
+        entry=${entry%/TCP}
+        if [[ "$entry" == *"->"* ]]; then
+            local left="${entry%%->*}"
+            local right="${entry##*->}"
+            left="${left##*:}"
+            right="${right##*:}"
+            formatted+=("${left}→${right}")
+        else
+            entry="${entry##*:}"
+            formatted+=("$entry")
+        fi
+    done
+
+    (( ${#formatted[@]} == 0 )) && return
+
+    local IFS=', '
+    echo "${formatted[*]}"
+}
+
+_motd_service_icon() {
+    local status="${1:l}"
+    case "$status" in
+        running*|up*|active*|healthy*)
+            echo "🟢"
+            ;;
+        exited*|dead*|inactive*|failed*|created*|down*|unhealthy*)
+            echo "🔴"
+            ;;
+        restarting*|start*|activating*)
+            echo "🟡"
+            ;;
+        *)
+            echo "⚪"
+            ;;
+    esac
+}
+
+_motd_get_services() {
+    local -a entries=()
+
+    if command -v docker >/dev/null 2>&1; then
+        local docker_output
+        docker_output=$(docker ps -a --format '{{.Names}}|{{.Status}}|{{.Ports}}' 2>/dev/null)
+        if [[ -n "$docker_output" ]]; then
+            while IFS='|' read -r name status ports; do
+                [[ -z "$name" ]] && continue
+                entries+=("docker|$status|$name|$ports")
+            done <<<"$docker_output"
+        fi
+    fi
+
+    local -a custom_services=()
+    local decl
+    if decl=$(typeset -p MOTD_SERVICES 2>/dev/null); then
+        if [[ "$decl" == *"typeset -a"* ]]; then
+            custom_services=("${MOTD_SERVICES[@]}")
+        elif [[ -n "${MOTD_SERVICES:-}" ]]; then
+            custom_services=(${=MOTD_SERVICES})
+        fi
+    elif [[ -n "${MOTD_SERVICES:-}" ]]; then
+        custom_services=(${=MOTD_SERVICES})
+    fi
+
+    if (( ${#custom_services[@]} > 0 )); then
+        local svc state
+        for svc in "${custom_services[@]}"; do
+            [[ -z "$svc" ]] && continue
+            state=$(_motd_detect_service_state "$svc")
+            entries+=("service|$state|$svc|")
+        done
+    fi
+
+    (( ${#entries[@]} == 0 )) && return
+
+    printf '%s\n' "${entries[@]}"
+}
+
+_motd_render_services() {
+    local width="${1:-80}"
+    shift
+    local -a entries=("$@")
+
+    (( ${#entries[@]} == 0 )) && return
+
+    echo "Services"
+
+    local columns=3
+    if (( width < columns * 24 )); then
+        columns=$(( width / 20 ))
+        (( columns < 1 )) && columns=1
+    fi
+    local column_width=$(( width / columns ))
+    if (( column_width < 20 )); then
+        column_width=20
+    fi
+    local rows=$(( ( ${#entries[@]} + columns - 1 ) / columns ))
+
+    local -a cells=()
+    local entry type status name ports icon port_display cell
+    for entry in "${entries[@]}"; do
+        IFS='|' read -r type status name ports <<<"$entry"
+        icon=$(_motd_service_icon "$status")
+        port_display=$(_motd_simplify_ports "$ports")
+        cell="${icon} ${name}"
+        if [[ -n "$port_display" ]]; then
+            cell+=" ${port_display}"
+        fi
+        cells+=("$cell")
+    done
+
+    local count=${#cells[@]}
+    local row col idx
+    for ((row = 0; row < rows; row++)); do
+        local line=""
+        for ((col = 0; col < columns; col++)); do
+            idx=$(( row + col * rows ))
+            if (( idx < count )); then
+                cell="${cells[idx]}"
+                if (( ${#cell} > column_width - 1 )); then
+                    cell="${cell:0:column_width-2}…"
+                fi
+                printf -v padded "%-*s" "$column_width" "$cell"
+                line+="$padded"
+            fi
+        done
+        echo "$line"
+    done
+}
+
+# ==============================================================================
 # Main Orchestration: T3.9 - motd() Function
 # ==============================================================================
 
@@ -466,6 +642,13 @@ motd() {
     _motd_render_banner "$hostname" "$ip_address" "$banner_bg_seq" "$banner_fg_seq" "$text_color_key" "$motd_width"
     echo -e "$status_line"
     _motd_render_divider "$motd_width"
+
+    local services_payload=$(_motd_get_services)
+    if [[ -n "$services_payload" ]]; then
+        local -a _motd_services
+        _motd_services=("${(f)services_payload}")
+        _motd_render_services "$motd_width" "${_motd_services[@]}"
+    fi
 
     # Always exit with 0 (success), even if some metrics unavailable
     return 0

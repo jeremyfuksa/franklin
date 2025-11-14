@@ -264,7 +264,9 @@ franklin_ui_spinner_wait() {
   printf '\n' >&2
   while kill -0 "$pid" 2>/dev/null; do
     local frame="${frames[$i]}"
-    printf '\r\033[K%b[%s]%b %s' "$FRANKLIN_UI_SPINNER_COLOR" "$frame" "$NC" "$desc" >&2
+    local spinner_badge
+    spinner_badge="$(franklin_ui_pad_badge "${FRANKLIN_UI_SPINNER_COLOR} [${frame}] ${NC}")"
+    printf '\r\033[K%b %s' "$spinner_badge" "$desc" >&2
     i=$(( (i + 1) % frame_count ))
     sleep "$FRANKLIN_UI_SPINNER_INTERVAL"
   done

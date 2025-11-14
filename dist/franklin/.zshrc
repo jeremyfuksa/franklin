@@ -23,6 +23,11 @@ if [ -f "$FRANKLIN_CONFIG_DIR/motd.env" ]; then
   source "$FRANKLIN_CONFIG_DIR/motd.env"
 fi
 
+: "${FRANKLIN_LOCAL_CONFIG:=${HOME}/.franklin.local.zsh}"
+if [ -f "$FRANKLIN_LOCAL_CONFIG" ]; then
+  source "$FRANKLIN_LOCAL_CONFIG"
+fi
+
 # Early platform detection
 if [ -f "$FRANKLIN_PLUGINS_DIR/os_detect.zsh" ]; then
   source "$FRANKLIN_PLUGINS_DIR/os_detect.zsh"
@@ -71,6 +76,50 @@ if [ "$antigen_loaded" -eq 1 ] 2>/dev/null; then
 else
   echo "franklin: Antigen not found; skipping plugin initialization" >&2
 fi
+
+# ============================================================================
+# Completion System
+# ============================================================================
+
+_franklin_init_completion() {
+  autoload -Uz compinit 2>/dev/null || return
+  : "${FRANKLIN_ZCOMP_CACHE:=$FRANKLIN_CONFIG_DIR/.zcompdump}"
+  local cache_file="$FRANKLIN_ZCOMP_CACHE"
+  local cache_dir="${cache_file:h}"
+  if [ -n "$cache_dir" ] && [ ! -d "$cache_dir" ]; then
+    mkdir -p "$cache_dir" 2>/dev/null || true
+  fi
+
+  local refresh_cache=1
+  if [ -f "$cache_file" ]; then
+    refresh_cache=0
+    if zmodload zsh/stat 2>/dev/null; then
+      local -a _fr_comp_stat
+      if zstat -A _fr_comp_stat +mtime -- "$cache_file" 2>/dev/null; then
+        if [[ -z "${EPOCHSECONDS+x}" ]]; then
+          zmodload zsh/datetime 2>/dev/null || true
+        fi
+        local now=${EPOCHSECONDS:-$(date +%s)}
+        local age=$(( now - ${_fr_comp_stat[1]} ))
+        if (( age > 86400 )); then
+          refresh_cache=1
+        fi
+      else
+        refresh_cache=1
+      fi
+    else
+      refresh_cache=1
+    fi
+  fi
+
+  if [ "$refresh_cache" -eq 0 ]; then
+    compinit -C -d "$cache_file" >/dev/null 2>&1 || compinit -i -d "$cache_file"
+  else
+    compinit -i -d "$cache_file"
+  fi
+}
+_franklin_init_completion
+unset -f _franklin_init_completion
 
 # ============================================================================
 # Shell Options
@@ -123,17 +172,18 @@ if [[ "$OS_FAMILY" == "macos" || "$OS_FAMILY" == "darwin" ]]; then
   alias ls='command ls -G'
   alias ll='command ls -laG'
   alias la='command ls -aG'
-  alias l='command ls -lhG'
+  alias lh='command ls -lhG'
 else
   # Linux/Unix: rely on GNU coreutils --color flags
   alias ls='command ls --color=auto'
   alias ll='command ls -la --color=auto'
   alias la='command ls -a --color=auto'
-  alias l='command ls -lh --color=auto'
+  alias lh='command ls -lh --color=auto'
 fi
 
 alias ..='cd ..'
 alias ...='cd ../..'
+alias ~='cd ~'
 
 # Grep with colors
 alias grep='grep --color=auto'

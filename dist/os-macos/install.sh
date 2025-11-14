@@ -32,6 +32,8 @@ ZSHRC_BACKUP="${HOME}/.zshrc.bak"
 VERBOSE=${VERBOSE:-0}
 FRANKLIN_CONFIG_DIR="${FRANKLIN_CONFIG_DIR:-${XDG_CONFIG_HOME:-$HOME/.config}/franklin}"
 export FRANKLIN_CONFIG_DIR
+FRANKLIN_LOCAL_CONFIG="${FRANKLIN_LOCAL_CONFIG:-$HOME/.franklin.local.zsh}"
+export FRANKLIN_LOCAL_CONFIG
 FRANKLIN_MOTD_COLOR="${FRANKLIN_MOTD_COLOR:-}"
 USER_MOTD_COLOR="$FRANKLIN_MOTD_COLOR"
 FRANKLIN_SIGNATURE_PALETTE="${FRANKLIN_SIGNATURE_PALETTE:-ember}"
@@ -84,6 +86,15 @@ begin_install_phase() {
 
 franklin_slugify() {
   printf '%s' "$1" | tr '[:upper:]' '[:lower:]' | sed -E 's/[^a-z0-9]+/-/g;s/^-+|-+$//g'
+}
+
+franklin_title_case() {
+  local input="$1"
+  if [ -z "$input" ]; then
+    printf ''
+    return
+  fi
+  printf '%s' "$input" | awk '{print toupper(substr($0,1,1)) substr($0,2)}'
 }
 
 declare -a FRANKLIN_SIGNATURE_COLOR_METADATA=(
@@ -285,7 +296,7 @@ configure_motd_color() {
       printf "  %d) %-6s — %s\n" "$palette_index" "$label" "$desc"
       ((palette_index++))
     done
-    printf "Choose palette [%s]: " "$(printf '%s' "$active_palette" | sed 's/^./\u&/')"
+    printf "Choose palette [%s]: " "$(franklin_title_case "$active_palette")"
     local palette_choice=""
     read -r palette_choice </dev/tty 2>/dev/null || palette_choice=""
     palette_choice="${palette_choice:-$active_palette}"
@@ -331,7 +342,7 @@ configure_motd_color() {
 
     while true; do
       echo ""
-      echo "Palette: $(printf '%s' "$active_palette" | sed 's/^./\u&/') — choose a shade:"
+      echo "Palette: $(franklin_title_case "$active_palette") — choose a shade:"
       for ((i = 0; i < total_colors; i++)); do
         IFS='|' read -r slug label desc <<<"${color_entries[$i]}"
         local hex="${color_hexes[$i]}"
@@ -511,6 +522,31 @@ create_symlink() {
   return 2
 }
 
+ensure_local_config_stub() {
+  local target="$FRANKLIN_LOCAL_CONFIG"
+
+  if [ -z "$target" ]; then
+    return 0
+  fi
+
+  if [ -f "$target" ]; then
+    log_debug "Local override file already exists: $target"
+    return 0
+  fi
+
+  local target_dir
+  target_dir="$(dirname "$target")"
+  mkdir -p "$target_dir"
+
+  cat <<'EOF' >"$target"
+# Franklin local overrides
+# Add private aliases, functions, exports, and server shortcuts here.
+# This file is sourced automatically at the end of ~/.zshrc.
+EOF
+  chmod 600 "$target" 2>/dev/null || true
+  log_success "Created local overrides file: $target"
+}
+
 run_version_audit() {
   local checker="$SCRIPT_DIR/scripts/check_versions.sh"
 
@@ -649,6 +685,8 @@ setup_zshrc() {
   # Create symlink
   create_symlink "$zshrc_target" "$ZSHRC_PATH"
 
+  ensure_local_config_stub
+
   log_success ".zshrc symlink configured"
   return 0
 }
@@ -733,6 +771,9 @@ show_summary() {
   franklin_ui_plain "Configuration:"
   franklin_ui_plain "  - Franklin installed: $FRANKLIN_HOME"
   franklin_ui_plain "  - .zshrc symlink: $ZSHRC_PATH"
+  if [ -f "$FRANKLIN_LOCAL_CONFIG" ]; then
+    franklin_ui_plain "  - Local overrides: $FRANKLIN_LOCAL_CONFIG"
+  fi
   if [ -f "$FRANKLIN_CONFIG_DIR/motd.env" ]; then
     franklin_ui_plain "  - MOTD color config: $FRANKLIN_CONFIG_DIR/motd.env"
   else
