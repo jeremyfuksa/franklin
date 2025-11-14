@@ -202,6 +202,10 @@ upgrade_antigen() {
     git)
       (
         cd "$source_path"
+        if [ -n "$(git status --porcelain)" ]; then
+          log_warning "Antigen repo has local modifications; skipping git checkout."
+          exit 0
+        fi
         git fetch --quiet --tags origin
         git checkout -q "$latest"
       )
