@@ -13,7 +13,7 @@ and the project aims to follow [Semantic Versioning](https://semver.org/).
 
 ### Fixed
 
-- _Nothing yet._
+- `update-all.sh` now updates git-based Franklin installs even when the GitHub API is unreachable, falling back to direct `git pull` before checking release tarballs.
 
 ## [1.4.1] - 2025-11-14
 

@@ -235,6 +235,24 @@ step_franklin_core() {
   if [ -f "$version_file" ]; then
     current_version=$(cat "$version_file" 2>/dev/null || echo "unknown")
   fi
+  local git_dir="$install_dir/.git"
+
+  if [ -d "$git_dir" ]; then
+    if [ -n "$(git -C "$install_dir" status --porcelain 2>/dev/null)" ]; then
+      log_warning "Franklin directory has local modifications; skipping git update."
+      return 1
+    fi
+
+    if run_with_spinner "Updating Franklin (git)" bash -c "cd '$install_dir' && git fetch --quiet --tags && git pull --ff-only"; then
+      local new_version
+      new_version=$(git -C "$install_dir" describe --tags --abbrev=0 2>/dev/null || git -C "$install_dir" rev-parse --short HEAD 2>/dev/null || echo "latest")
+      log_info "Franklin updated via git (now $new_version). Restart your shell to load the new release."
+      return 0
+    fi
+
+    log_warning "Git-based Franklin update failed."
+    return 2
+  fi
 
   local latest_version
   latest_version=$(fetch_latest_release_tag)
@@ -246,21 +264,6 @@ step_franklin_core() {
   if [ "$current_version" = "$latest_version" ]; then
     log_info "Franklin already at ${current_version}."
     return 0
-  fi
-
-  if [ -d "$install_dir/.git" ]; then
-    if [ -n "$(git -C "$install_dir" status --porcelain 2>/dev/null)" ]; then
-      log_warning "Franklin directory has local modifications; skipping git update."
-      return 1
-    fi
-
-    if run_with_spinner "Updating Franklin (git)" bash -c "cd '$install_dir' && git fetch --quiet --tags && git pull --ff-only"; then
-      log_info "Franklin updated via git. Restart your shell to load the new release."
-      return 0
-    fi
-
-    log_warning "Git-based Franklin update failed."
-    return 2
   fi
 
   local tmpdir
