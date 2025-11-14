@@ -229,11 +229,6 @@ franklin_ui_spinner_should_run() {
   if [ -n "${GITHUB_ACTIONS:-}" ]; then
     return 1
   fi
-  case "${TERM_PROGRAM:-}" in
-    Hyper)
-      return 1
-      ;;
-  esac
   if [ -n "${NO_COLOR:-}" ] || [ "${CLICOLOR:-1}" = "0" ]; then
     return 1
   fi
@@ -269,7 +264,7 @@ franklin_ui_spinner_wait() {
   printf '\n' >&2
   while kill -0 "$pid" 2>/dev/null; do
     local frame="${frames[$i]}"
-    printf '\r\033[K%s[%s]%s %s' "$FRANKLIN_UI_SPINNER_COLOR" "$frame" "$NC" "$desc" >&2
+    printf '\r\033[K%b[%s]%b %s' "$FRANKLIN_UI_SPINNER_COLOR" "$frame" "$NC" "$desc" >&2
     i=$(( (i + 1) % frame_count ))
     sleep "$FRANKLIN_UI_SPINNER_INTERVAL"
   done

@@ -22,7 +22,7 @@ This document captures the logging and UX conventions introduced in `UI-DeepDive
 - For spinner-like work, call `franklin_ui_run_with_spinner "Description" cmd args...`. It routes progress to `stderr`, captures output for verbose mode, and emits aligned badges automatically.
 - For higher-level phases (`run_step`/`begin_install_phase`), rely on `franklin_ui_section` + `franklin_ui_log` so summaries share the same look and alignment.
 - `FRANKLIN_FORCE_SPINNER=1` or `FRANKLIN_DISABLE_SPINNER=1` let CI/users override detection, and `FRANKLIN_UI_SPINNER_VERBOSE=1` replays captured output after success.
-- Spinners automatically stay off in `CI`/`GITHUB_ACTIONS`, `TERM_PROGRAM=Hyper`, `TERM=dumb`, or when `NO_COLOR`/`CLICOLOR=0` is set so captured logs don't show raw ANSI escape codes—set `FRANKLIN_FORCE_SPINNER=1` to opt back in.
+- Spinners automatically stay off in `CI`/`GITHUB_ACTIONS`, `TERM=dumb`, or when `NO_COLOR`/`CLICOLOR=0` is set so captured logs don't show raw ANSI escape codes—set `FRANKLIN_FORCE_SPINNER=1` to opt back in.
 
 ## Consumer Scripts
 - `install.sh` and `update-all.sh` both accept `--quiet`, `--verbose`, and reuse the shared helpers (no direct ANSI/printf logic).
