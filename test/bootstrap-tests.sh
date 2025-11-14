@@ -7,7 +7,7 @@ ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 TMP_ROOT="$(mktemp -d)"
 trap 'rm -rf "$TMP_ROOT"' EXIT
 
-bash "$ROOT_DIR/scripts/build_release.sh" >/dev/null
+bash "$ROOT_DIR/src/scripts/build_release.sh" >/dev/null
 
 case "$(uname -s)" in
   Darwin)

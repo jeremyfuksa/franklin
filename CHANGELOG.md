@@ -14,10 +14,15 @@ and the project aims to follow [Semantic Versioning](https://semver.org/).
 
 ### Changed
 
+- **Simplified distribution architecture**: Franklin now ships as a single universal tarball instead of three OS-specific bundles, reducing build complexity while keeping runtime OS detection. The 18KB size difference is negligible compared to eliminated maintenance overhead.
+- **Improved project structure**: Source files moved to `src/` directory for cleaner separation between code, tests, documentation, and project metadata. Follows standard conventions for modern projects.
 - Completion caching now refreshes once every 24 hours via `FRANKLIN_ZCOMP_CACHE`, speeding up shell startup while keeping completions fresh.
 - Spinner frames now reuse the padded badge formatter so the second column stays aligned with other log lines.
 
-## [1.2.3] - 2025-11-13
+### Removed
+
+- OS-specific build bundles (`franklin-macos.tar.gz`, `franklin-debian.tar.gz`, `franklin-fedora.tar.gz`) in favor of single `franklin.tar.gz` containing all platform scripts.
+- `scripts/render_os_specific.py` and manifest generation logic—runtime detection handles OS differences cleanly.
 
 ## [1.2.3] - 2025-11-13
 

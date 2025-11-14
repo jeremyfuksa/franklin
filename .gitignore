@@ -27,6 +27,7 @@ Thumbs.db
 .env
 .env.local
 .env.*.local
+docs/
 
 # Node.js (for spec 006: NVM integration)
 node_modules/

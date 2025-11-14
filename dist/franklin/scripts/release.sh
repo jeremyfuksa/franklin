@@ -9,16 +9,17 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-ROOT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
+SRC_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
+ROOT_DIR="$(cd "$SRC_DIR/.." && pwd)"
 DIST_DIR="${DIST_DIR:-$ROOT_DIR/dist}"
 PROJECT_SLUG="${PROJECT_SLUG:-franklin}"
 
 : "${FRANKLIN_UI_QUIET:=0}"
 : "${FRANKLIN_DISABLE_SPINNER:=1}"
 # shellcheck source=../lib/colors.sh
-. "$ROOT_DIR/lib/colors.sh"
+. "$SRC_DIR/lib/colors.sh"
 # shellcheck source=../lib/ui.sh
-. "$ROOT_DIR/lib/ui.sh"
+. "$SRC_DIR/lib/ui.sh"
 
 DRY_RUN=0
 UPLOAD=1
@@ -127,21 +128,10 @@ log_info "Releasing Franklin $VERSION (dry-run=$DRY_RUN)"
 release_step "Stamping VERSION file" env FRANKLIN_VERSION="$VERSION" "$SCRIPT_DIR/write_version_file.sh"
 release_step "Building distribution artifacts" "$SCRIPT_DIR/build_release.sh"
 
-ARTIFACTS=(
-  "$DIST_DIR/$PROJECT_SLUG.tar.gz"
-  "$DIST_DIR/$PROJECT_SLUG-macos.tar.gz"
-  "$DIST_DIR/$PROJECT_SLUG-debian.tar.gz"
-  "$DIST_DIR/$PROJECT_SLUG-fedora.tar.gz"
-)
+ARTIFACT="$DIST_DIR/$PROJECT_SLUG.tar.gz"
 
-missing=0
-for artifact in "${ARTIFACTS[@]}"; do
-  if [ ! -f "$artifact" ]; then
-    log_error "Expected artifact not found: $artifact"
-    missing=1
-  fi
-done
-if [ "$missing" -eq 1 ]; then
+if [ ! -f "$ARTIFACT" ]; then
+  log_error "Expected artifact not found: $ARTIFACT"
   exit 2
 fi
 
@@ -154,7 +144,7 @@ release_step "Pushing release tag" git -C "$ROOT_DIR" push origin "$VERSION"
 if [ "$UPLOAD" -eq 1 ]; then
   if command -v gh >/dev/null 2>&1; then
     NOTES_FLAG=(--generate-notes)
-    run gh release create "$VERSION" "${ARTIFACTS[@]}" --title "$VERSION" "${NOTES_FLAG[@]}"
+    run gh release create "$VERSION" "$ARTIFACT" --title "$VERSION" "${NOTES_FLAG[@]}"
   else
     log_warning "gh CLI not found; skipping release upload."
   fi

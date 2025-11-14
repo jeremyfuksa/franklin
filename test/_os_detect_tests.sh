@@ -87,7 +87,7 @@ test_macos_detection() {
   ((TESTS_RUN++))
 
   # On macOS, should detect macos
-  bash lib/os_detect.sh > /tmp/os_detect_test.out 2>&1
+  bash src/lib/os_detect.sh > /tmp/os_detect_test.out 2>&1
   local exit_code=$?
 
   source /tmp/os_detect_test.out 2>/dev/null
@@ -106,7 +106,7 @@ test_homebrew_detection() {
   echo "Test: Homebrew Detection"
   ((TESTS_RUN++))
 
-  bash lib/os_detect.sh > /tmp/os_detect_test.out 2>&1
+  bash src/lib/os_detect.sh > /tmp/os_detect_test.out 2>&1
   source /tmp/os_detect_test.out 2>/dev/null
 
   # Just check that HAS_HOMEBREW is set
@@ -129,7 +129,7 @@ test_verbose_flag() {
   ((TESTS_RUN++))
 
   local output
-  output=$(bash lib/os_detect.sh --verbose 2>&1)
+  output=$(bash src/lib/os_detect.sh --verbose 2>&1)
 
   if echo "$output" | grep -q "\[os_detect\]"; then
     echo "  ✓ PASS: Verbose output contains [os_detect] prefix"
@@ -145,7 +145,7 @@ test_json_flag() {
   ((TESTS_RUN++))
 
   local output
-  output=$(bash lib/os_detect.sh --json 2>&1)
+  output=$(bash src/lib/os_detect.sh --json 2>&1)
 
   if echo "$output" | grep -q '"OS_FAMILY"'; then
     echo "  ✓ PASS: JSON output contains OS_FAMILY field"
@@ -169,7 +169,7 @@ test_zsh_wrapper() {
   ((TESTS_RUN++))
 
   local output
-  output=$(bash -c 'source lib/os_detect.zsh && echo "$OS_FAMILY"' 2>&1)
+  output=$(bash -c 'source src/lib/os_detect.zsh && echo "$OS_FAMILY"' 2>&1)
 
   if [ -n "$output" ] && [ "$output" != "export" ]; then
     echo "  ✓ PASS: Zsh wrapper exports OS_FAMILY correctly"
@@ -185,7 +185,7 @@ test_performance() {
   ((TESTS_RUN++))
 
   local output
-  output=$(bash lib/os_detect.sh --json 2>&1)
+  output=$(bash src/lib/os_detect.sh --json 2>&1)
 
   # Extract detection_ms from JSON output
   local detection_ms
@@ -205,7 +205,7 @@ test_environment_override() {
   ((TESTS_RUN++))
 
   local output
-  output=$(bash -c 'export OS_FAMILY=debian && source lib/os_detect.sh && echo "$OS_FAMILY"' 2>&1)
+  output=$(bash -c 'export OS_FAMILY=debian && source src/lib/os_detect.sh && echo "$OS_FAMILY"' 2>&1)
 
   if echo "$output" | grep -q "debian"; then
     echo "  ✓ PASS: Environment variable override works"
@@ -222,7 +222,7 @@ test_idempotency() {
   ((TESTS_RUN++))
 
   local output
-  output=$(bash -c 'source lib/os_detect.sh && OS_FAMILY_1="$OS_FAMILY" && source lib/os_detect.sh && [ "$OS_FAMILY_1" = "$OS_FAMILY" ] && echo "ok"' 2>&1)
+  output=$(bash -c 'source src/lib/os_detect.sh && OS_FAMILY_1="$OS_FAMILY" && source src/lib/os_detect.sh && [ "$OS_FAMILY_1" = "$OS_FAMILY" ] && echo "ok"' 2>&1)
 
   if echo "$output" | grep -q "ok"; then
     echo "  ✓ PASS: Multiple sources produce same result"

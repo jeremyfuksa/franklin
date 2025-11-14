@@ -6,14 +6,15 @@ set -euo pipefail
 
 # shellcheck disable=SC2155
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-ROOT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
+SRC_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
+ROOT_DIR="$(cd "$SRC_DIR/.." && pwd)"
 
 # Shared UI helpers
 : "${FRANKLIN_UI_QUIET:=0}"
 # shellcheck source=../lib/colors.sh
-. "$ROOT_DIR/lib/colors.sh"
+. "$SRC_DIR/lib/colors.sh"
 # shellcheck source=../lib/ui.sh
-. "$ROOT_DIR/lib/ui.sh"
+. "$SRC_DIR/lib/ui.sh"
 
 APPLY_UPDATES=0
 JSON_OUTPUT=0

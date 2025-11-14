@@ -1,1 +1,0 @@
-Always update CHANGELOG.md when fixes or features are added. Keep an [Unreleased] section that accumulates new changes (Added/Changed/Fixed) until a release is cut, then move the entries into the tagged version.

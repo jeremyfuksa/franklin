@@ -7,7 +7,6 @@ OWNER=${FRANKLIN_BOOTSTRAP_OWNER:-jeremyfuksa}
 REPO=${FRANKLIN_BOOTSTRAP_REPO:-franklin}
 INSTALL_ROOT=${FRANKLIN_INSTALL_ROOT:-$HOME/.local/share/franklin}
 REQUESTED_RELEASE=${FRANKLIN_BOOTSTRAP_RELEASE:-latest}
-OS_FAMILY=""
 INSTALL_ARGS=()
 TMP_DIR=""
 ARCHIVE_URL=${FRANKLIN_BOOTSTRAP_ARCHIVE:-}
@@ -154,12 +153,11 @@ cleanup() {
 
 trap cleanup EXIT
 
-detect_os_family() {
+validate_platform() {
   local uname_out
   uname_out=$(uname -s || true)
   case "$uname_out" in
     Darwin)
-      OS_FAMILY="macos"
       return 0
       ;;
     Linux)
@@ -167,20 +165,14 @@ detect_os_family() {
         # shellcheck disable=SC1091
         . /etc/os-release
         case "${ID:-}" in
-          ubuntu|debian|pop|elementary|linuxmint|neon)
-            OS_FAMILY="debian"
-            return 0
-            ;;
-          fedora)
-            OS_FAMILY="fedora"
+          ubuntu|debian|pop|elementary|linuxmint|neon|fedora)
             return 0
             ;;
         esac
       fi
       ;;
   esac
-  log_error "Unsupported platform. Franklin releases currently target macOS, Debian/Ubuntu, and RHEL/Fedora."
-  exit 1
+  log_warning "Franklin may not fully support this platform. Supported: macOS, Debian/Ubuntu, RHEL/Fedora."
 }
 
 resolve_release_tag() {
@@ -272,11 +264,11 @@ download_release() {
   local tag="$1"
   local url="$ARCHIVE_URL"
   if [ -z "$url" ]; then
-    url="https://github.com/$OWNER/$REPO/releases/download/$tag/franklin-$OS_FAMILY.tar.gz"
+    url="https://github.com/$OWNER/$REPO/releases/download/$tag/franklin.tar.gz"
   fi
   TMP_DIR=$(mktemp -d)
-  local tarball="$TMP_DIR/franklin-$OS_FAMILY.tar.gz"
-  log_info "Downloading Franklin release ($tag) for $OS_FAMILY..."
+  local tarball="$TMP_DIR/franklin.tar.gz"
+  log_info "Downloading Franklin release ($tag)..."
   curl -fL "$url" -o "$tarball"
   printf '%s' "$tarball"
 }
@@ -303,7 +295,7 @@ main() {
   require_cmd tar
   require_cmd bash
   parse_args "$@"
-  detect_os_family
+  validate_platform
   local release_tag
   if [ -n "$ARCHIVE_URL" ]; then
     release_tag="custom"

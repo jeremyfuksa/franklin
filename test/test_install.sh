@@ -111,9 +111,9 @@ test_install_script_executable() {
 
 test_platform_installers_exist() {
   echo "Test: Platform-specific installers exist"
-  assert_file_exists "lib/install_macos.sh" "macOS installer"
-  assert_file_exists "lib/install_debian.sh" "apt installer"
-  assert_file_exists "lib/install_fedora.sh" "dnf installer"
+  assert_file_exists "src/lib/install_macos.sh" "macOS installer"
+  assert_file_exists "src/lib/install_debian.sh" "apt installer"
+  assert_file_exists "src/lib/install_fedora.sh" "dnf installer"
 }
 
 test_install_help() {

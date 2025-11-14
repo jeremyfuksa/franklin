@@ -50,7 +50,7 @@ echo ""
 
 # Source the helpers
 export FRANKLIN_TEST_MODE=1
-source lib/motd-helpers.zsh
+source src/lib/motd-helpers.zsh
 
 DEFAULT_MOTD_HEX="${MOTD_DEFAULT_HEX:-#4C627D}"
 DEFAULT_MOTD_ANSI="${MOTD_DEFAULT_ANSI:-66}"
