@@ -55,7 +55,7 @@ ensure_antigen_installed() {
     return 1
   fi
 
-  log_info "Installing Antigen (${FRANKLIN_ANTIGEN_VERSION})..."
+  log_info "Downloading Antigen (${FRANKLIN_ANTIGEN_VERSION})..."
   mkdir -p "$antigen_dir"
 
   local tmp_file

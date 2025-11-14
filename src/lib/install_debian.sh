@@ -75,17 +75,25 @@ install_debian_dependencies() {
     fi
   done
 
-  # Starship (need to use snap or build)
+  # Starship (prefer snap; fall back to official script)
   if ! command -v starship >/dev/null 2>&1; then
     log_info "Installing Starship prompt..."
+    local installed=0
     if command -v snap >/dev/null 2>&1; then
       if sudo snap install starship >/dev/null 2>&1; then
         log_success "Starship installed via snap"
+        installed=1
       else
         log_warning "Starship snap installation failed"
       fi
-    else
-      log_warning "Starship not installed (requires snap or manual installation)"
+    fi
+    if [ "$installed" -eq 0 ]; then
+      log_info "Falling back to official Starship installer..."
+      if curl -fsSL https://starship.rs/install.sh | sh -s -- --yes >/dev/null 2>&1; then
+        log_success "Starship installed via official installer"
+      else
+        log_warning "Starship installation failed (manual install may be required)"
+      fi
     fi
   else
     log_debug "Starship already installed"

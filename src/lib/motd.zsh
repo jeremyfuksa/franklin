@@ -532,10 +532,10 @@ _motd_render_services() {
     local rows=$(( ( ${#entries[@]} + columns - 1 ) / columns ))
 
     local -a cells=()
-    local entry type status name ports icon port_display cell
+    local entry type entry_status name ports icon port_display cell
     for entry in "${entries[@]}"; do
-        IFS='|' read -r type status name ports <<<"$entry"
-        icon=$(_motd_service_icon "$status")
+        IFS='|' read -r type entry_status name ports <<<"$entry"
+        icon=$(_motd_service_icon "$entry_status")
         port_display=$(_motd_simplify_ports "$ports")
         cell="${icon} ${name}"
         if [[ -n "$port_display" ]]; then

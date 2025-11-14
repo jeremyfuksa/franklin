@@ -18,6 +18,10 @@ and the project aims to follow [Semantic Versioning](https://semver.org/).
 - Release status now falls back to the repo `VERSION` file when the GitHub API is unavailable, eliminating spurious “unable to check latest” warnings.
 - `_motd_get_services` no longer assigns to zsh’s read-only `status` parameter, fixing the “read-only variable: status” warning on Debian-based installs.
 - Debian updates now revalidate `sudo` credentials before wrapping apt commands in the spinner, preventing hidden password prompts and apparent hangs.
+- Version audit skips git-based Antigen upgrades when local modifications are present, logging a warning instead of failing the entire step.
+- Debian installers fall back to the official Starship install script if `snap install starship` fails or snapd is unavailable, ensuring the prompt can be installed non-interactively.
+- Antigen installs now clone the full upstream repository (respecting `FRANKLIN_ANTIGEN_VERSION`), ensuring `bin/antigen.zsh` exists and preventing “command not found: antigen” errors.
+- `_motd_render_services` uses a non-reserved variable name so zsh no longer warns about `status` when printing services.
 
 ## [1.4.1] - 2025-11-14
 
