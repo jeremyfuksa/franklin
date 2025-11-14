@@ -29,6 +29,7 @@ and the project aims to follow [Semantic Versioning](https://semver.org/).
 - `_motd_render_services` truncates long cells using portable arithmetic, eliminating “unrecognized modifier” crashes when drawing the services grid.
 - `step_nvm` skips deleting active Node versions when pruning old releases, removing spurious “Failed to remove vXX.Y.Z” warnings on Debian hosts.
 - Color helpers now auto-detect terminal capabilities, falling back to 256-color or basic ANSI palettes when truecolor isn’t supported so Debian installers render cleanly.
+- Truecolor detection now also checks `tput colors` (>= 16777216) so capable Debian terminals get 24-bit badges without needing `COLORTERM=truecolor`.
 
 ## [1.4.1] - 2025-11-14
 

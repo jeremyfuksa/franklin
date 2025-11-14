@@ -12,6 +12,11 @@ franklin_use_truecolor() {
   if [ "${FRANKLIN_DISABLE_TRUECOLOR:-0}" -eq 1 ]; then
     return 1
   fi
+  local colors
+  colors=$(tput colors 2>/dev/null || echo 0)
+  if [ "$colors" -ge 16777216 ]; then
+    return 0
+  fi
   case "${COLORTERM:-}" in
     *truecolor*|*24bit*) return 0 ;;
   esac
