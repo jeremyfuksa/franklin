@@ -382,7 +382,11 @@ for component in "${COMPONENTS[@]}"; do
   if [ "$installed" = "not_installed" ]; then
     status="not_installed"
   elif [ "$latest_normalized" != "$installed_normalized" ]; then
-    status="update_available"
+    if [ "$install_type" = "system" ]; then
+      status="lagging"
+    else
+      status="update_available"
+    fi
   fi
 
   if [ "$APPLY_UPDATES" -eq 1 ] && [ "$status" = "update_available" ]; then
