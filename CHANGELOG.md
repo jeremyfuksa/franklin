@@ -11,6 +11,16 @@ and the project aims to follow [Semantic Versioning](https://semver.org/).
 
 - _Nothing yet._
 
+### Fixed
+
+- _Nothing yet._
+
+## [1.4.1] - 2025-11-14
+
+### Fixed
+
+- `update-all.sh` no longer complains about a blank option when run with no arguments (including via `franklin update`); the CLI loop now uses numeric comparison for argument parsing.
+
 ## [1.4.0] - 2025-11-14
 
 ### Added

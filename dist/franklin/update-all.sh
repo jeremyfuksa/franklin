@@ -686,7 +686,7 @@ step_version_pins() {
 
 main() {
   # Parse arguments
-  while [ $# > 0 ]; do
+  while [ "$#" -gt 0 ]; do
     case "$1" in
       --verbose)
         VERBOSE=1
