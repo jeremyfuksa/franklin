@@ -28,6 +28,9 @@ mkdir -p "$OUTPUT_DIR"
 log_info "Copying Franklin source files to $OUTPUT_DIR..."
 rsync -a "$SRC_DIR/" "$OUTPUT_DIR/"
 
+# Copy VERSION file from root
+cp "$ROOT_DIR/VERSION" "$OUTPUT_DIR/VERSION"
+
 ARCHIVE_PATH="$DIST_DIR/$PROJECT_SLUG.tar.gz"
 rm -f "$ARCHIVE_PATH"
 
