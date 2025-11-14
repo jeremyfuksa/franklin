@@ -35,7 +35,7 @@ ARCHIVE_PATH="$DIST_DIR/$PROJECT_SLUG.tar.gz"
 rm -f "$ARCHIVE_PATH"
 
 log_info "Creating release tarball..."
-tar -czf "$ARCHIVE_PATH" -C "$OUTPUT_DIR" .
+env COPYFILE_DISABLE=1 tar -czf "$ARCHIVE_PATH" -C "$OUTPUT_DIR" .
 
 log_success "Release directory: $OUTPUT_DIR"
 log_success "Release archive:   $ARCHIVE_PATH"
