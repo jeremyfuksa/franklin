@@ -628,8 +628,9 @@ step_nvm() {
 
   # Clean up old node versions (keep only LTS)
   log_info "Cleaning up old Node versions..."
-  local lts_version
+  local lts_version active_version
   lts_version=$(nvm version lts/* 2>/dev/null)
+  active_version=$(nvm current 2>/dev/null || echo "")
   
   if [ -n "$lts_version" ]; then
     local version
@@ -638,15 +639,17 @@ step_nvm() {
       local ver_name
       ver_name=$(basename "$version")
       
-      # Skip the LTS version
-      if [ "$ver_name" = "$lts_version" ]; then
-        log_debug "Keeping LTS version: $ver_name"
+      # Skip the LTS version or whatever is currently active
+      if [ "$ver_name" = "$lts_version" ] || { [ -n "$active_version" ] && [ "$ver_name" = "$active_version" ]; }; then
+        log_debug "Keeping required Node version: $ver_name"
         continue
       fi
       
       # Uninstall old versions
       log_debug "Removing old version: $ver_name"
-      nvm uninstall "$ver_name" >/dev/null 2>&1 || log_warning "Failed to remove $ver_name"
+      if ! nvm uninstall "$ver_name" >/dev/null 2>&1; then
+        log_warning "Failed to remove $ver_name (it may still be in use)"
+      fi
     done
   fi
 

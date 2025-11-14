@@ -27,6 +27,8 @@ and the project aims to follow [Semantic Versioning](https://semver.org/).
 - Existing Antigen installs referencing the deprecated `/bin/antigen.zsh` shim are automatically backed up and refreshed to the official single-file script, preventing “command not found: antigen” errors while preserving the legacy copy.
 - `_motd_service_icon` now lowercases via `tr`, avoiding the “unrecognized modifier” error seen on older Debian zsh builds.
 - `_motd_render_services` truncates long cells using portable arithmetic, eliminating “unrecognized modifier” crashes when drawing the services grid.
+- `step_nvm` skips deleting active Node versions when pruning old releases, removing spurious “Failed to remove vXX.Y.Z” warnings on Debian hosts.
+- Color helpers now auto-detect terminal capabilities, falling back to 256-color or basic ANSI palettes when truecolor isn’t supported so Debian installers render cleanly.
 
 ## [1.4.1] - 2025-11-14
 
