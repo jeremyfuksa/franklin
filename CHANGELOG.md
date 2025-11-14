@@ -7,7 +7,17 @@ and the project aims to follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
-_No changes yet._
+### Added
+
+- `.zshrc` now sources `~/.franklin.local.zsh` (or `FRANKLIN_LOCAL_CONFIG`) so you can keep private aliases outside the repo; the installer creates the stub automatically.
+- MOTD automatically shows a Docker/services grid when containers are present or `MOTD_SERVICES` defines custom daemons to monitor.
+
+### Changed
+
+- Completion caching now refreshes once every 24 hours via `FRANKLIN_ZCOMP_CACHE`, speeding up shell startup while keeping completions fresh.
+- Spinner frames now reuse the padded badge formatter so the second column stays aligned with other log lines.
+
+## [1.2.3] - 2025-11-13
 
 ## [1.2.3] - 2025-11-13
 

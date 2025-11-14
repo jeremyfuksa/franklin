@@ -61,6 +61,8 @@ Everything lives under `~/.config/franklin` (or your `--install-root`). Before t
 
 - **Banner color**: rerun `install.sh --motd-color <name|palette:name|#hex>` or edit `~/.config/franklin/motd.env`. See the Quick Start table for Franklin signature names.
 - **Prompt/plugins**: edit `starship.toml` or drop additional scripts in `~/.config/franklin/lib/` and source them from `.zshrc`.
+- **Local overrides**: add private aliases/functions to `~/.franklin.local.zsh` (auto-created, sourced after Franklin loads). Set `FRANKLIN_LOCAL_CONFIG` before install to change the path.
+- **MOTD services**: Docker containers are detected automatically; set `MOTD_SERVICES=(nginx postgresql redis)` (array or space-separated string) to track additional systemd/launchd services in the dashboard.
 - **Backups**: set `FRANKLIN_BACKUP_DIR=/path/to/dir` before installing if you want backups elsewhere.
 
 ## Troubleshooting
