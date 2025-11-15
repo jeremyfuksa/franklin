@@ -21,6 +21,7 @@ and the project aims to follow [Semantic Versioning](https://semver.org/).
 
 ### Fixed
 
+- MOTD services grid now renders correctly by calculating visible length instead of including ANSI escape codes in length calculations
 - MOTD service status icons now render properly (was outputting literal escape sequences instead of colored dots)
 - MOTD now displays memory and disk usage in MB when values are less than 1GB (e.g., "512M/3G" instead of "0G/3G")
 

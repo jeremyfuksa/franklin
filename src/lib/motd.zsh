@@ -571,15 +571,28 @@ _motd_render_services() {
             idx=$(( row + col * rows ))
             if (( idx < count )); then
                 cell="${cells[idx]}"
-                if (( ${#cell} > column_width - 1 )); then
+                # Calculate visible length (strip ANSI codes for measurement)
+                local cell_plain=$(echo "$cell" | sed -E 's/\x1B\[[0-9;]*[A-Za-z]//g')
+                local visible_len=${#cell_plain}
+
+                if (( visible_len > column_width - 1 )); then
                     local truncate_len=$(( column_width > 2 ? column_width - 2 : column_width ))
-                    cell="${cell:0:$truncate_len}…"
+                    cell_plain="${cell_plain:0:$truncate_len}…"
+                    cell="$cell_plain"  # Use plain version if truncated
+                    visible_len=${#cell_plain}
                 fi
-                printf -v padded "%-*s" "$column_width" "$cell"
-                line+="$padded"
+
+                # Pad based on visible length
+                local padding_needed=$(( column_width - visible_len ))
+                if (( padding_needed > 0 )); then
+                    local spaces=$(printf "%*s" "$padding_needed" "")
+                    line+="${cell}${spaces}"
+                else
+                    line+="$cell"
+                fi
             fi
         done
-        echo "$line"
+        echo -e "$line"
     done
 }
 
