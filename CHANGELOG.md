@@ -21,6 +21,7 @@ and the project aims to follow [Semantic Versioning](https://semver.org/).
 
 ### Fixed
 
+- UI section banners (install/update) now use consistent color (middle row background matches half-block character color)
 - MOTD banner now uses consistent color (middle row background matches half-block character color instead of using different shade)
 - MOTD service icons now include trailing space for better visual separation from service names
 - MOTD memory calculation now uses floating-point arithmetic instead of integer division, fixing "0M" display when RAM usage is less than 1GB
@@ -55,13 +56,13 @@ and the project aims to follow [Semantic Versioning](https://semver.org/).
 - Version audit now detects uv installs from `~/.local/bin/uv`, so Debian installs see uv as "system" once the official installer runs.
 - System packages managed by apt/snap are now labeled as "lagging" instead of "update_available", acknowledging that Debian repos often trail upstream releases.
 
-## [1.4.1] - 2025-11-14
+## [1.4.1] - 2024-11-14
 
 ### Fixed
 
 - `update-all.sh` no longer complains about a blank option when run with no arguments (including via `franklin update`); the CLI loop now uses numeric comparison for argument parsing.
 
-## [1.4.0] - 2025-11-14
+## [1.4.0] - 2024-11-14
 
 ### Added
 
@@ -83,13 +84,13 @@ and the project aims to follow [Semantic Versioning](https://semver.org/).
 - OS-specific build bundles (`franklin-macos.tar.gz`, `franklin-debian.tar.gz`, `franklin-fedora.tar.gz`) in favor of single `franklin.tar.gz` containing all platform scripts.
 - `scripts/render_os_specific.py` and manifest generation logic—runtime detection handles OS differences cleanly.
 
-## [1.2.3] - 2025-11-13
+## [1.2.3] - 2024-11-13
 
 ### Fixed
 
 - Spinner logging now emits ANSI escapes via `%b` so Apple Terminal, Hyper, and other 24-bit terminals render animations correctly instead of printing literal `\033[...]` text.
 
-## [1.2.2] - 2025-11-13
+## [1.2.2] - 2024-11-13
 
 ### Added
 
@@ -101,7 +102,7 @@ and the project aims to follow [Semantic Versioning](https://semver.org/).
 - CLI style guide documents the spinner API plus `FRANKLIN_FORCE_SPINNER` / `FRANKLIN_DISABLE_SPINNER` / `FRANKLIN_UI_SPINNER_VERBOSE` for contributors.
 - Spinner animation now automatically disables itself when running under CI/dumb terminals/`NO_COLOR`, and `scripts/release.sh` opts out by default so captured logs don’t show raw ANSI control codes.
 
-## [1.2.0] - 2025-11-13
+## [1.2.0] - 2024-11-13
 
 ### Added
 
@@ -113,7 +114,7 @@ and the project aims to follow [Semantic Versioning](https://semver.org/).
 - `install.sh`, `update-all.sh`, and all build/release tooling now route diagnostics through `lib/ui.sh`, respect a common `--quiet` flag, and render consistent badges/sections without polluting stdout.
 - Release archives now ship the refreshed documentation set (CLI UX plan, UI deep dive, CLI style) so downstream bundles include the latest guidance by default.
 
-## [1.1.5] - 2025-11-13
+## [1.1.5] - 2024-11-13
 
 ### Added
 
@@ -145,7 +146,7 @@ and the project aims to follow [Semantic Versioning](https://semver.org/).
 - MOTD helper tests can set `FRANKLIN_TEST_MODE=1` to strip ANSI sequences from bar charts, keeping assertions stable in CI.
 - Disk usage readings in the MOTD are now derived from raw `df -k` values, so the used/total numbers match macOS Finder exactly (no more 11 GB when you really have 395 GB on disk).
 
-## [1.1.3] - 2025-11-13
+## [1.1.3] - 2024-11-13
 
 ### Changed
 
@@ -155,13 +156,13 @@ and the project aims to follow [Semantic Versioning](https://semver.org/).
 
 - MOTD color picker accepts shorthand/custom hex values (`eee`, `abc`, `123456`) with or without a leading `#`, both when using `--motd-color` and during the interactive installer prompt.
 
-## [1.1.1] - 2025-11-13
+## [1.1.1] - 2024-11-13
 
 ### Changed
 
 - Section banners in `install.sh` and `update-all.sh` now mirror the Campfire MOTD style exactly: top/bottom glyphs render without background color, and the middle fill uses the lighter Cello shade with base text color for improved contrast.
 
-## [1.1.0] - 2025-11-13
+## [1.1.0] - 2024-11-13
 
 ### Added
 
@@ -176,7 +177,7 @@ and the project aims to follow [Semantic Versioning](https://semver.org/).
 
 - `scripts/check_versions.sh` no longer aborts when `npm` isn't on the PATH, so `update-all` completes cleanly even if NPM hasn't been initialized yet.
 
-## [1.0.1] - 2025-11-12
+## [1.0.1] - 2024-11-12
 
 ### Added
 
@@ -185,7 +186,9 @@ and the project aims to follow [Semantic Versioning](https://semver.org/).
 - Automatic environment flagging (e.g., `FRANKLIN_FORCE_TRUECOLOR=1`) ensures the MOTD picks up truecolor palettes just like the installer preview.
 - `MOTD_DEBUG_COLORS=1` prints the resolved banner hex, ANSI sequences, and text color so you can see exactly what the MOTD is emitting.
 - Added VERSION file generation and helper scripts (`scripts/write_version_file.sh`, `scripts/current_franklin_version.sh`) so releases embed and expose the Franklin build identifier.
-- Interactive MOTD color picker now uses a numbered menu (plus custom hex option) so invalid text entries can’t accidentally reset the banner color.
+- Interactive MOTD color picker now uses a numbered menu (plus custom hex option) so invalid text entries can't accidentally reset the banner color.
+
+### Changed
 
 - Darkened the Franklin palette via HSL tweaks so prompts and dashboards have better contrast.
 - Rebuilt the macOS, Debian, Fedora, and unified release bundles plus manifests to capture the latest assets.
@@ -205,7 +208,7 @@ and the project aims to follow [Semantic Versioning](https://semver.org/).
 - MOTD helper tests can set `FRANKLIN_TEST_MODE=1` to strip ANSI sequences from bar charts, keeping assertions stable in CI.
 - Disk usage readings in the MOTD are now derived from raw `df -k` values, so the used/total numbers match macOS Finder exactly (no more 11 GB when you really have 395 GB on disk).
 
-## [1.0.0] - 2025-11-12
+## [1.0.0] - 2024-11-12
 
 ### Added
 

@@ -150,8 +150,10 @@ franklin_ui_section() {
   bottom=$(franklin_ui_repeat_char "$FRANKLIN_UI_RULE_BOTTOM_CHAR" "$width")
   printf -v middle ' %s ' "$title"
   printf -v middle '%-*s' "$FRANKLIN_UI_WIDTH" "$middle"
+  # Convert INFO_BAR foreground color to background to match half-block colors
+  local middle_bg="${FRANKLIN_UI_COLOR_INFO_BAR/38;/48;}"
   _franklin_ui_emit "${FRANKLIN_UI_COLOR_INFO_BAR}${top}${NC}"
-  _franklin_ui_emit "${FRANKLIN_UI_COLOR_INFO_BG_LIGHT}${FRANKLIN_UI_COLOR_INFO_TEXT}${middle}${NC}"
+  _franklin_ui_emit "${middle_bg}${FRANKLIN_UI_COLOR_INFO_TEXT}${middle}${NC}"
   _franklin_ui_emit "${FRANKLIN_UI_COLOR_INFO_BAR}${bottom}${NC}"
 }
 
