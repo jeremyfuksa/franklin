@@ -568,8 +568,8 @@ _motd_render_services() {
     for ((row = 0; row < rows; row++)); do
         local line=""
         for ((col = 0; col < columns; col++)); do
-            idx=$(( row + col * rows ))
-            if (( idx < count )); then
+            idx=$(( row + col * rows + 1 ))  # Zsh arrays are 1-indexed
+            if (( idx <= count )); then
                 cell="${cells[idx]}"
                 # Calculate visible length (strip ANSI codes for measurement)
                 local cell_plain=$(echo "$cell" | sed -E 's/\x1B\[[0-9;]*[A-Za-z]//g')
