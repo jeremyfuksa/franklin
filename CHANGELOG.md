@@ -21,6 +21,7 @@ and the project aims to follow [Semantic Versioning](https://semver.org/).
 
 ### Fixed
 
+- MOTD memory calculation now uses floating-point arithmetic instead of integer division, fixing "0M" display when RAM usage is less than 1GB
 - MOTD services grid now uses correct 1-indexed array access for zsh (was accessing empty cells[0] instead of cells[1])
 - MOTD services grid now renders correctly by calculating visible length instead of including ANSI escape codes in length calculations
 - MOTD service status icons now render properly (was outputting literal escape sequences instead of colored dots)

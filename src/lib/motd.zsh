@@ -167,8 +167,15 @@ _motd_get_memory_metrics() {
             local memavail=$(grep "MemAvailable:" /proc/meminfo | awk '{print $2}')
 
             if [[ -n "$memtotal" && -n "$memavail" ]]; then
-                mem_total=$((memtotal / 1048576))  # KB to GB
-                mem_used=$((mem_total - memavail / 1048576))  # Used = Total - Available
+                # Use awk for floating-point arithmetic to avoid integer truncation
+                local mem_metrics=$(awk -v total="$memtotal" -v avail="$memavail" 'BEGIN {
+                    total_gb = total / 1048576
+                    avail_gb = avail / 1048576
+                    used_gb = total_gb - avail_gb
+                    printf "%.1f %.1f", used_gb, total_gb
+                }')
+                mem_used=$(echo "$mem_metrics" | cut -d' ' -f1)
+                mem_total=$(echo "$mem_metrics" | cut -d' ' -f2)
             fi
         fi
     fi
