@@ -306,7 +306,7 @@ _motd_build_status_line() {
     local bar_plain=$(echo "$bar_colored" | sed -E 's/\x1B\[[0-9;]*[A-Za-z]//g')
 
     local disk_icon=""
-    local mem_icon=""
+    local mem_icon=" "
 
     local reset="${NC:-\033[0m}"
     local disk_color="${CAMPFIRE_SECONDARY_ACCENT:-}"
