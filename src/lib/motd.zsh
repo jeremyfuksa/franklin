@@ -475,16 +475,16 @@ _motd_service_icon() {
 
     case "$svc_status" in
         running*|up*|active*|healthy*)
-            echo "\033[32m●${reset}"  # Green
+            printf '\033[32m●%s' "$reset"  # Green
             ;;
         exited*|dead*|inactive*|failed*|created*|down*|unhealthy*)
-            echo "\033[31m●${reset}"  # Red
+            printf '\033[31m●%s' "$reset"  # Red
             ;;
         restarting*|start*|activating*)
-            echo "\033[33m●${reset}"  # Yellow
+            printf '\033[33m●%s' "$reset"  # Yellow
             ;;
         *)
-            echo "\033[37m●${reset}"  # Gray
+            printf '\033[37m●%s' "$reset"  # Gray
             ;;
     esac
 }

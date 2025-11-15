@@ -21,6 +21,7 @@ and the project aims to follow [Semantic Versioning](https://semver.org/).
 
 ### Fixed
 
+- MOTD service status icons now render properly (was outputting literal escape sequences instead of colored dots)
 - MOTD now displays memory and disk usage in MB when values are less than 1GB (e.g., "512M/3G" instead of "0G/3G")
 
 ## [1.4.20] - 2025-01-15
