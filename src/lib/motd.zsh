@@ -471,18 +471,20 @@ _motd_simplify_ports() {
 _motd_service_icon() {
     local svc_status="$1"
     svc_status=$(printf '%s' "$svc_status" | tr '[:upper:]' '[:lower:]')
+    local reset="${NC:-\033[0m}"
+
     case "$svc_status" in
         running*|up*|active*|healthy*)
-            echo "🟢"
+            echo "\033[32m●${reset}"  # Green
             ;;
         exited*|dead*|inactive*|failed*|created*|down*|unhealthy*)
-            echo "🔴"
+            echo "\033[31m●${reset}"  # Red
             ;;
         restarting*|start*|activating*)
-            echo "🟡"
+            echo "\033[33m●${reset}"  # Yellow
             ;;
         *)
-            echo "⚪"
+            echo "\033[37m●${reset}"  # Gray
             ;;
     esac
 }

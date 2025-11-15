@@ -17,6 +17,7 @@ and the project aims to follow [Semantic Versioning](https://semver.org/).
 ### Changed
 
 - Moved `reload` functionality from standalone function to `franklin reload` subcommand, avoiding namespace conflicts with plugin aliases
+- MOTD service status indicators now use colored ANSI dots (●) instead of emoji circles for better terminal compatibility
 
 ### Fixed
 
