@@ -14,9 +14,29 @@
 
 set -e
 
-if command -v sudo >/dev/null 2>&1; then
-  trap 'sudo -k >/dev/null 2>&1 || true' EXIT
-fi
+# Cleanup handler for signals and exit
+_franklin_update_cleanup() {
+  local exit_code=$?
+
+  # Clear any remaining sudo credentials
+  if command -v sudo >/dev/null 2>&1; then
+    sudo -k >/dev/null 2>&1 || true
+  fi
+
+  # Restore terminal state (show cursor, clear line)
+  tput cnorm 2>/dev/null || true
+  printf '\r\033[K' >&2
+
+  # If interrupted, show message
+  if [ $exit_code -eq 130 ]; then
+    echo "" >&2
+    echo "Update interrupted by user." >&2
+  fi
+
+  exit $exit_code
+}
+
+trap _franklin_update_cleanup EXIT INT TERM
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 VERBOSE=${VERBOSE:-0}

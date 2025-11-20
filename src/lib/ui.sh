@@ -294,6 +294,14 @@ franklin_ui_run_with_spinner() {
   tmpfile=$(mktemp)
   local exit_code
 
+  # Clean up temp file and restore terminal on exit or interrupt
+  _franklin_ui_cleanup() {
+    rm -f "$tmpfile" 2>/dev/null || true
+    printf '\r\033[K' >&2  # Clear line
+    tput cnorm 2>/dev/null || true  # Show cursor
+  }
+  trap _franklin_ui_cleanup EXIT INT TERM
+
   if franklin_ui_spinner_should_run; then
     "$@" >"$tmpfile" 2>&1 &
     local pid=$!

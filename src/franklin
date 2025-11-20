@@ -136,12 +136,12 @@ case "$command" in
     run_check "$@"
     ;;
   reload)
-    echo "Reloading shell configuration..."
+    echo "Reloading shell configuration..." >&2
     if command -v zsh >/dev/null 2>&1; then
       exec zsh -l
     else
       log_error "zsh not found in PATH"
-      exit 1
+      exit 2
     fi
     ;;
   version)

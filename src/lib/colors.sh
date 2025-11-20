@@ -5,6 +5,32 @@ if [ -n "${FRANKLIN_COLORS_LOADED:-}" ]; then
   return 0 2>/dev/null || true
 fi
 
+# Check if colors should be used at all
+franklin_should_use_colors() {
+  # Respect NO_COLOR standard (https://no-color.org/)
+  if [ -n "${NO_COLOR:-}" ]; then
+    return 1
+  fi
+
+  # If explicitly disabled
+  if [ "${FRANKLIN_DISABLE_COLORS:-0}" -eq 1 ]; then
+    return 1
+  fi
+
+  # If explicitly enabled, allow colors
+  if [ "${FRANKLIN_FORCE_COLORS:-0}" -eq 1 ]; then
+    return 0
+  fi
+
+  # Check if stderr is a TTY (UI output goes to stderr)
+  if [ -t 2 ]; then
+    return 0
+  fi
+
+  # Not a TTY and not forced - disable colors
+  return 1
+}
+
 franklin_use_truecolor() {
   if [ "${FRANKLIN_FORCE_TRUECOLOR:-0}" -eq 1 ]; then
     return 0
@@ -38,7 +64,46 @@ franklin_use_extended_colors() {
   return 1
 }
 
-if franklin_use_truecolor; then
+# Disable all colors if not appropriate for this environment
+if ! franklin_should_use_colors; then
+  FRANKLIN_TRUECOLOR_ENABLED=0
+  FRANKLIN_EXTENDED_COLORS_ENABLED=0
+  RED=''
+  GREEN=''
+  YELLOW=''
+  BLUE=''
+  NC=''
+
+  CAMPFIRE_PRIMARY_TEXT_LIGHT=''
+  CAMPFIRE_PRIMARY_TEXT_DARK=''
+  CAMPFIRE_PRIMARY_BAR=''
+  CAMPFIRE_PRIMARY_100_BG=''
+  CAMPFIRE_PRIMARY_200_BG=''
+  CAMPFIRE_PRIMARY_600_BG=''
+  CAMPFIRE_PRIMARY_800_BG=''
+
+  CAMPFIRE_NEUTRAL_50=''
+  CAMPFIRE_NEUTRAL_900=''
+  CAMPFIRE_NEUTRAL_950=''
+  CAMPFIRE_SECONDARY_ACCENT=''
+  CAMPFIRE_SAGE_ACCENT=''
+  CAMPFIRE_INFO_ACCENT=''
+
+  CAMPFIRE_SECONDARY_700_BG=''
+  CAMPFIRE_SECONDARY_800_BG=''
+
+  CAMPFIRE_SUCCESS_BG=''
+  CAMPFIRE_SUCCESS_FG=''
+
+  CAMPFIRE_WARNING_BG=''
+  CAMPFIRE_WARNING_FG=''
+
+  CAMPFIRE_DANGER_BG=''
+  CAMPFIRE_DANGER_FG=''
+
+  CAMPFIRE_INFO_BG=''
+  CAMPFIRE_INFO_FG=''
+elif franklin_use_truecolor; then
   FRANKLIN_TRUECOLOR_ENABLED=1
   FRANKLIN_EXTENDED_COLORS_ENABLED=1
   RED='\033[38;2;220;58;56m'
