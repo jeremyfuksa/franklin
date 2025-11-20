@@ -46,8 +46,6 @@ FRANKLIN_UI_QUIET=${FRANKLIN_UI_QUIET:-0}
 STEPS_FAILED=0
 STEPS_PASSED=0
 FRANKLIN_ONLY=0
-SHELDON_CONFIG_DIR="${SHELDON_CONFIG_DIR:-$HOME/.config/franklin/sheldon}"
-export SHELDON_CONFIG_DIR
 
 # Shared resources
 # shellcheck source=lib/colors.sh
@@ -56,8 +54,6 @@ export SHELDON_CONFIG_DIR
 . "$SCRIPT_DIR/lib/versions.sh"
 # shellcheck source=lib/ui.sh
 . "$SCRIPT_DIR/lib/ui.sh"
-# shellcheck source=lib/streaming_filters.sh
-. "$SCRIPT_DIR/lib/streaming_filters.sh"
 
 # ============================================================================
 # Helper Functions
@@ -72,42 +68,17 @@ run_with_spinner() {
     franklin_ui_run_with_spinner "$desc" "$@"
 }
 
-log_info() { franklin_ui_blank_line; franklin_ui_bullet "$@"; }
-log_success() { franklin_ui_substatus success "$@"; }
-log_warning() { franklin_ui_substatus warning "$@"; }
-log_error() { franklin_ui_substatus error "$@"; }
-log_debug() { [ "$VERBOSE" -eq 1 ] && franklin_ui_substatus info "$@"; }
+UPDATE_BADGE="[UPDATE]"
+DEBUG_BADGE="[DEBUG]"
 
-stream_update() {
-  local preset="$1"
-  shift
-  if declare -F franklin_ui_stream_filtered >/dev/null 2>&1; then
-    franklin_ui_stream_filtered "$preset" "$@"
-  else
-    "$@"
-  fi
-}
-
-migrate_antigen_to_sheldon() {
-  local config_dir="$SHELDON_CONFIG_DIR"
-  local plugins_file="$config_dir/plugins.toml"
-  local template="$SCRIPT_DIR/sheldon/plugins.toml"
-  local antigen_dir="${FRANKLIN_ANTIGEN_DIR:-$HOME/.antigen}"
-
-  if [ -f "$plugins_file" ]; then
-    return 0
-  fi
-
-  if [ -f "$template" ]; then
-    mkdir -p "$config_dir"
-    cp "$template" "$plugins_file"
-    log_info "Initialized Sheldon config at $plugins_file"
-  else
-    log_warning "No Sheldon plugins configured at $plugins_file"
-  fi
-
-  if [ -d "$antigen_dir" ]; then
-    franklin_ui_substatus info "Legacy Antigen directory detected at $antigen_dir (no longer used)"
+log_info() { franklin_ui_blank_line; franklin_ui_log info "$UPDATE_BADGE" "$@"; }
+log_success() { franklin_ui_blank_line; franklin_ui_log success "  OK " "$@"; }
+log_warning() { franklin_ui_blank_line; franklin_ui_log warning " WARN " "$@"; }
+log_error() { franklin_ui_blank_line; franklin_ui_log error " ERR " "$@"; }
+log_debug() {
+  if [ "$VERBOSE" -eq 1 ]; then
+    franklin_ui_blank_line
+    franklin_ui_log debug "$DEBUG_BADGE" "$@"
   fi
 }
 
@@ -135,6 +106,53 @@ fetch_latest_release_tag() {
   fi
 
   printf '%s\n' "$latest"
+}
+
+print_version_status() {
+  local turtle="🐢"
+  local version_file="$SCRIPT_DIR/VERSION"
+  local current_version="unknown"
+  local latest_version="unknown"
+  local status="unknown"
+  local version_script="$SCRIPT_DIR/scripts/current_franklin_version.sh"
+
+  if [ -x "$version_script" ]; then
+    current_version=$("$version_script" 2>/dev/null || echo "unknown")
+  elif [ -f "$version_file" ]; then
+    current_version=$(cat "$version_file" 2>/dev/null || echo "unknown")
+  fi
+
+  if command -v gh >/dev/null 2>&1; then
+    latest_version=$(gh release view --json tagName -q '.tagName' 2>/dev/null || echo "unknown")
+  else
+    latest_version=$(curl -fsSL "https://api.github.com/repos/jeremyfuksa/franklin/releases/latest" 2>/dev/null \
+      | grep -m1 '"tag_name"' \
+      | sed -E 's/.*"tag_name"[[:space:]]*:[[:space:]]*"([^"]+)".*/\1/' 2>/dev/null || echo "unknown")
+  fi
+
+  if [ "$latest_version" = "unknown" ] || [ -z "$latest_version" ]; then
+    latest_version=$(curl -fsSL "https://raw.githubusercontent.com/jeremyfuksa/franklin/main/VERSION" 2>/dev/null | tr -d '\r' || echo "unknown")
+  fi
+
+  if [ "$current_version" != "unknown" ] && [ "$latest_version" != "unknown" ]; then
+    if [ "$current_version" = "$latest_version" ]; then
+      status="current"
+    else
+      status="outdated"
+    fi
+  fi
+
+  case "$status" in
+    current)
+      franklin_ui_plain "${GREEN}${turtle}${NC} Franklin ${current_version} (latest)"
+      ;;
+    outdated)
+      franklin_ui_plain "${YELLOW}${turtle}${NC} Franklin ${current_version} (latest: ${latest_version})"
+      ;;
+    *)
+      franklin_ui_plain "${turtle} Franklin version: ${current_version} (unable to check latest)"
+      ;;
+  esac
 }
 
 print_version_status() {
@@ -185,7 +203,7 @@ run_step() {
   local step_name="$1"
   local step_fn="$2"
 
-  franklin_ui_bullet "$step_name"
+  print_section_header "$step_name"
 
   # Run in subshell for isolation
   if (
@@ -193,17 +211,17 @@ run_step() {
     $step_fn
     return $?
   ); then
-    franklin_ui_substatus success "Completed"
+    franklin_ui_log success " OK " "$step_name"
     ((STEPS_PASSED++))
     return 0
   else
     local exit_code=$?
     if [ $exit_code -eq 1 ]; then
-      franklin_ui_substatus warning "Skipped (optional)"
+      log_warning "$step_name skipped (optional)"
       ((STEPS_PASSED++))
       return 0
     else
-      franklin_ui_substatus error "Failed"
+      log_error "$step_name failed"
       ((STEPS_FAILED++))
       return 1
     fi
@@ -270,26 +288,34 @@ step_franklin_core() {
     return 2
   fi
 
-  local latest_version
-  latest_version=$(fetch_latest_release_tag)
-  if [ -z "$latest_version" ] || [ "$latest_version" = "unknown" ]; then
-    log_warning "Unable to determine latest Franklin release."
-    return 1
+  local latest_version="${FRANKLIN_VERSION:-}"
+  local archive_url="${FRANKLIN_BOOTSTRAP_ARCHIVE:-}"
+
+  if [ -z "$archive_url" ]; then
+    local tmp_latest
+    tmp_latest=$(fetch_latest_release_tag)
+    if [ -z "$tmp_latest" ] || [ "$tmp_latest" = "unknown" ]; then
+      log_warning "Unable to determine latest Franklin release."
+      return 1
+    fi
+    archive_url="https://github.com/jeremyfuksa/franklin/releases/download/${tmp_latest}/franklin.tar.gz"
+    latest_version="${latest_version:-$tmp_latest}"
+  else
+    latest_version="${latest_version:-${current_version:-local-build}}"
   fi
 
-  if [ "$current_version" = "$latest_version" ]; then
+  if [ "$current_version" = "$latest_version" ] && [ -z "${FRANKLIN_BOOTSTRAP_ARCHIVE:-}" ]; then
     log_info "Franklin already at ${current_version}."
     return 0
   fi
 
   local tmpdir
-  tmpdir=$(mktemp -d "${TMPDIR:-/tmp}/franklin.XXXXXX")
+  tmpdir=$(mktemp -d)
   local tarball="$tmpdir/franklin.tar.gz"
   local extract_dir="$tmpdir/extracted"
   mkdir -p "$extract_dir"
-  local download_url="https://github.com/jeremyfuksa/franklin/releases/download/${latest_version}/franklin.tar.gz"
 
-  if ! run_with_spinner "Downloading Franklin ${latest_version}" curl -fL "$download_url" -o "$tarball"; then
+  if ! run_with_spinner "Downloading Franklin ${latest_version}" curl -fL "$archive_url" -o "$tarball"; then
     log_warning "Failed to download Franklin release ${latest_version}."
     rm -rf "$tmpdir"
     return 2
@@ -364,33 +390,61 @@ step_os_packages() {
   esac
 }
 
-step_sheldon() {
-  local config_dir="$SHELDON_CONFIG_DIR"
-  local plugins_file="$config_dir/plugins.toml"
-  local template="$SCRIPT_DIR/sheldon/plugins.toml"
+step_antigen() {
+  # Check if antigen is installed (Homebrew or manual)
+  local antigen_found=0
+  local antigen_path=""
 
-  if ! command -v sheldon >/dev/null 2>&1; then
-    log_warning "Sheldon not installed, skipping"
-    return 1
-  fi
-
-  if [ ! -f "$plugins_file" ]; then
-    if [ -f "$template" ]; then
-      mkdir -p "$config_dir"
-      cp "$template" "$plugins_file"
-      log_info "Initialized Sheldon config at $plugins_file"
-    else
-      log_warning "No Sheldon plugins configured at $plugins_file"
-      return 1
+  # Check for Homebrew installation
+  if command -v brew >/dev/null 2>&1; then
+    local brew_antigen="$(brew --prefix antigen 2>/dev/null)/share/antigen/antigen.zsh"
+    if [ -f "$brew_antigen" ]; then
+      antigen_found=1
+      antigen_path="$brew_antigen"
     fi
   fi
 
-  if stream_update "tool" env SHELDON_CONFIG_DIR="$config_dir" sheldon lock --update; then
-    return 0
+  # Check for manual installation
+  if [ -f "$HOME/.antigen/antigen.zsh" ]; then
+    antigen_found=1
+    antigen_path="$HOME/.antigen/antigen.zsh"
   fi
 
-  log_error "Sheldon lock refresh failed"
-  return 2
+  if [ $antigen_found -eq 0 ]; then
+    log_warning "Antigen not installed, skipping"
+    return 1
+  fi
+
+  # Update Antigen using the proper method
+  if command -v brew >/dev/null 2>&1 && brew list antigen >/dev/null 2>&1; then
+    log_info "Updating Antigen via Homebrew..."
+    if [ -z "$(brew outdated --quiet antigen)" ]; then
+      log_info "Antigen already up to date."
+    else
+      run_with_spinner "Upgrading Antigen" brew upgrade antigen >/dev/null 2>&1
+    fi
+  elif [ -d "$HOME/.antigen/.git" ]; then
+    log_info "Updating Antigen and plugins..."
+    # Use antigen's built-in selfupdate command
+    if run_with_spinner "Updating Antigen and plugins" zsh -c "source '$antigen_path' && antigen selfupdate && antigen update" 2>/dev/null; then
+      log_debug "Antigen and plugins updated successfully"
+    else
+      log_warning "Antigen update failed, trying git pull..."
+      run_with_spinner "Pulling Antigen updates" bash -c "cd '$HOME/.antigen' && git pull --quiet" || log_warning "Git pull failed"
+    fi
+  else
+    log_info "Re-downloading Antigen..."
+    # For single-file installations, re-download
+    if run_with_spinner "Downloading Antigen" curl -fsSL git.io/antigen -o "$antigen_path.tmp" 2>/dev/null; then
+      mv "$antigen_path.tmp" "$antigen_path"
+      log_debug "Antigen updated successfully"
+    else
+      log_warning "Failed to download Antigen update"
+      rm -f "$antigen_path.tmp"
+    fi
+  fi
+
+  return 0
 }
 
 step_starship() {
@@ -717,8 +771,6 @@ main() {
   log_info "Starting unified system update..."
   echo ""
 
-  migrate_antigen_to_sheldon || true
-
   if [ "$FRANKLIN_ONLY" -eq 1 ]; then
     run_step "Franklin core" step_franklin_core || true
     print_section_header "Summary"
@@ -734,7 +786,7 @@ main() {
   # Run update steps (isolated)
   run_step "Franklin core" step_franklin_core || true
   run_step "OS packages" step_os_packages || true
-  run_step "Sheldon plugins" step_sheldon || true
+  run_step "Antigen plugins" step_antigen || true
   run_step "Starship prompt" step_starship || true
   run_step "Python runtime" step_python_runtime || true
   run_step "uv CLI" step_uv || true
