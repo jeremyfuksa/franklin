@@ -27,7 +27,7 @@ install_debian_dependencies() {
     return 1
   fi
 
-  # Install core dependencies
+  # Install core dependencies (all required)
   local packages=(
     "zsh"           # Shell
     "git"           # Version control (should already be installed)
@@ -35,6 +35,8 @@ install_debian_dependencies() {
     "build-essential"  # For compiling
     "python3"       # Python 3
     "python3-pip"   # pip package manager
+    "python3-venv"  # Python virtual environments
+    "bat"           # Cat with syntax highlighting (command: batcat on Debian)
   )
 
   local failed=0
@@ -53,29 +55,20 @@ install_debian_dependencies() {
     fi
   done
 
-  # Install optional packages
-  log_info "Installing optional packages..."
-
-  local optional_packages=(
-    "fzf"           # Fuzzy finder
-    "ripgrep"       # Fast grep alternative
-    "bat"           # Cat with syntax highlighting (command: batcat on Debian)
-  )
-
-  for pkg in "${optional_packages[@]}"; do
-    if dpkg -l | grep -q "^ii.*$pkg"; then
-      log_debug "$pkg already installed"
+  # Install uv (Python package manager) - not in apt, install via official installer
+  if ! command -v uv >/dev/null 2>&1; then
+    log_info "Installing uv (Python package manager)..."
+    if curl -LsSf https://astral.sh/uv/install.sh | sh >/dev/null 2>&1; then
+      log_success "uv installed ✓"
     else
-      log_info "Installing $pkg (optional)..."
-      if sudo apt-get install -y "$pkg" >/dev/null 2>&1; then
-        log_success "$pkg installed ✓"
-      else
-        log_debug "Skipping $pkg (not critical)"
-      fi
+      log_error "uv installation failed - this is required for Franklin"
+      failed=1
     fi
-  done
+  else
+    log_debug "uv already installed"
+  fi
 
-  # Starship (prefer snap; fall back to official script)
+  # Starship (required - prefer snap; fall back to official script)
   if ! command -v starship >/dev/null 2>&1; then
     log_info "Installing Starship prompt..."
     local installed=0
@@ -92,15 +85,29 @@ install_debian_dependencies() {
       if curl -fsSL https://starship.rs/install.sh | sh -s -- --yes >/dev/null 2>&1; then
         log_success "Starship installed via official installer"
       else
-        log_warning "Starship installation failed (manual install may be required)"
+        log_error "Starship installation failed - this is required for Franklin"
+        return 2
       fi
     fi
   else
     log_debug "Starship already installed"
   fi
 
-  ensure_antigen_installed || log_warning "Antigen installation skipped (manual install required)"
-  ensure_nvm_installed || log_warning "NVM installation skipped (manual install required)"
+  # Antigen is required (not optional)
+  if ! ensure_antigen_installed; then
+    log_error "Antigen installation failed - this is required for Franklin"
+    return 2
+  fi
+
+  # NVM is required (not optional)
+  if ! ensure_nvm_installed; then
+    log_error "NVM installation failed - this is required for Franklin"
+    return 2
+  fi
+
+  if [ $failed -eq 1 ]; then
+    return 2
+  fi
 
   log_success "Debian-based dependencies installation complete"
   return 0

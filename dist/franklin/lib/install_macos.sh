@@ -25,36 +25,26 @@ install_macos_dependencies() {
   log_info "Updating Homebrew..."
   brew update
 
-  # Install core dependencies
-  local packages=(
-    "zsh"           # Shell (if not installed)
-    "antigen"       # Plugin manager
-    "fzf"           # Fuzzy finder
-    "starship"      # Prompt
-    "bat"           # Cat with syntax highlighting
-    "python3"       # Python 3
-  )
+  # Install dependencies from Brewfile
+  local brewfile="$FRANKLIN_LIB_DIR/../Brewfile"
+  if [ ! -f "$brewfile" ]; then
+    log_error "Brewfile not found at $brewfile"
+    return 2
+  fi
 
-  local failed=0
-  for pkg in "${packages[@]}"; do
-    if brew list "$pkg" >/dev/null 2>&1; then
-      log_debug "$pkg already installed"
-    else
-      log_info "Installing $pkg..."
-      if brew install "$pkg"; then
-        log_success "$pkg installed ✓"
-      else
-        log_warning "Failed to install $pkg"
-        failed=1
-      fi
-    fi
-  done
-
-  if [ $failed -eq 1 ]; then
+  log_info "Installing packages from Brewfile..."
+  if brew bundle install --file="$brewfile" --no-lock; then
+    log_success "Homebrew packages installed ✓"
+  else
+    log_warning "Some Homebrew packages failed to install"
     return 1
   fi
 
-  ensure_nvm_installed || log_warning "NVM installation skipped (macOS)"
+  # NVM is required (not optional)
+  if ! ensure_nvm_installed; then
+    log_error "NVM installation failed - this is required for Franklin"
+    return 2
+  fi
 
   log_success "macOS dependencies installed"
   return 0

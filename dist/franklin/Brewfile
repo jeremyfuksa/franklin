@@ -1,0 +1,13 @@
+# Franklin macOS Dependencies
+# Installed via: brew bundle install --file=Brewfile
+
+# Core packages (all required)
+brew "zsh"        # Shell
+brew "antigen"    # Zsh plugin manager (will migrate to sheldon in 2.0)
+brew "starship"   # Cross-shell prompt
+brew "bat"        # Cat with syntax highlighting
+brew "python3"    # Python 3
+brew "uv"         # Python package manager (Rust-based, extremely fast)
+
+# Note: NVM installed separately via official installer (faster, more compatible)
+# Note: fzf and ripgrep intentionally excluded (not referenced in .zshrc)
