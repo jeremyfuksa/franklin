@@ -351,15 +351,23 @@ step_os_packages() {
 
 step_sheldon() {
   local config_dir="$SHELDON_CONFIG_DIR"
+  local plugins_file="$config_dir/plugins.toml"
+  local template="$SCRIPT_DIR/sheldon/plugins.toml"
 
   if ! command -v sheldon >/dev/null 2>&1; then
     log_warning "Sheldon not installed, skipping"
     return 1
   fi
 
-  if [ ! -f "$config_dir/plugins.toml" ]; then
-    log_warning "No Sheldon plugins configured at $config_dir/plugins.toml"
-    return 1
+  if [ ! -f "$plugins_file" ]; then
+    if [ -f "$template" ]; then
+      mkdir -p "$config_dir"
+      cp "$template" "$plugins_file"
+      franklin_ui_substatus info "Initialized Sheldon config at $plugins_file"
+    else
+      log_warning "No Sheldon plugins configured at $plugins_file"
+      return 1
+    fi
   fi
 
   if stream_update "tool" env SHELDON_CONFIG_DIR="$config_dir" sheldon lock --update; then
