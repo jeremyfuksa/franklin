@@ -264,7 +264,7 @@ download_release() {
   local tag="$1"
   local url="$ARCHIVE_URL"
   if [ -z "$url" ]; then
-    url="https://github.com/$OWNER/$REPO/releases/download/$tag/franklin.tar.gz"
+    url="https://github.com/$OWNER/$REPO/archive/refs/tags/$tag.tar.gz"
   fi
   TMP_DIR=$(mktemp -d)
   local tarball="$TMP_DIR/franklin.tar.gz"
@@ -278,7 +278,8 @@ extract_release() {
   log_info "Extracting to $INSTALL_ROOT"
   rm -rf "$INSTALL_ROOT"
   mkdir -p "$INSTALL_ROOT"
-  tar -xzf "$tarball" -C "$INSTALL_ROOT"
+  # GitHub tag archives unpack as franklin-<tag>/src/...; strip both prefixes to mirror dist layout.
+  tar -xzf "$tarball" -C "$INSTALL_ROOT" --strip-components=2
 }
 
 run_installer() {

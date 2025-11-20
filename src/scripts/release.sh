@@ -1,18 +1,14 @@
 #!/usr/bin/env bash
 # Automate Franklin release creation end-to-end:
 #   1. Stamp VERSION with the supplied tag
-#   2. Build distribution artifacts
-#   3. Commit and tag the release
-#   4. Push commit + tag
-#   5. Upload artifacts to GitHub via gh (unless disabled)
+#   2. Commit and tag the release
+#   3. Push commit + tag
 
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 SRC_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 ROOT_DIR="$(cd "$SRC_DIR/.." && pwd)"
-DIST_DIR="${DIST_DIR:-$ROOT_DIR/dist}"
-PROJECT_SLUG="${PROJECT_SLUG:-franklin}"
 
 : "${FRANKLIN_UI_QUIET:=0}"
 : "${FRANKLIN_DISABLE_SPINNER:=1}"
@@ -22,15 +18,13 @@ PROJECT_SLUG="${PROJECT_SLUG:-franklin}"
 . "$SRC_DIR/lib/ui.sh"
 
 DRY_RUN=0
-UPLOAD=1
 
 usage() {
   cat <<'EOF'
 Usage: scripts/release.sh [options] vX.Y.Z
 
 Options:
-  --dry-run      Print the steps without mutating git or creating releases
-  --no-upload    Skip the GitHub release upload (still builds + tags)
+  --dry-run      Print the steps without mutating git
   --quiet        Suppress Franklin UI logging (stderr only)
   --help         Show this help message
 
@@ -44,14 +38,6 @@ log_info() { franklin_ui_log info "[RELEASE]" "$@"; }
 log_success() { franklin_ui_log success " DONE " "$@"; }
 log_warning() { franklin_ui_log warning " WARN " "$@"; }
 log_error() { franklin_ui_log error " ERR " "$@"; }
-
-run() {
-  if [ "$DRY_RUN" -eq 1 ]; then
-    log_info "(dry-run) $*"
-  else
-    "$@"
-  fi
-}
 
 release_step() {
   local desc="$1"
@@ -74,10 +60,6 @@ while [ $# -gt 0 ]; do
   case "$1" in
     --dry-run)
       DRY_RUN=1
-      shift
-      ;;
-    --no-upload)
-      UPLOAD=0
       shift
       ;;
     --quiet)
@@ -126,30 +108,11 @@ fi
 log_info "Releasing Franklin $VERSION (dry-run=$DRY_RUN)"
 
 release_step "Stamping VERSION file" env FRANKLIN_VERSION="$VERSION" "$SCRIPT_DIR/write_version_file.sh"
-release_step "Building distribution artifacts" "$SCRIPT_DIR/build_release.sh"
 
-ARTIFACT="$DIST_DIR/$PROJECT_SLUG.tar.gz"
-
-if [ ! -f "$ARTIFACT" ]; then
-  log_error "Expected artifact not found: $ARTIFACT"
-  exit 2
-fi
-
-release_step "Staging release assets" git -C "$ROOT_DIR" add VERSION dist
+release_step "Staging VERSION" git -C "$ROOT_DIR" add VERSION
 release_step "Committing release" git -C "$ROOT_DIR" commit -m "release: $VERSION"
 release_step "Tagging release" git -C "$ROOT_DIR" tag -a "$VERSION" -m "Franklin $VERSION"
 release_step "Pushing main branch" git -C "$ROOT_DIR" push
 release_step "Pushing release tag" git -C "$ROOT_DIR" push origin "$VERSION"
-
-if [ "$UPLOAD" -eq 1 ]; then
-  if command -v gh >/dev/null 2>&1; then
-    NOTES_FLAG=(--generate-notes)
-    run gh release create "$VERSION" "$ARTIFACT" --title "$VERSION" "${NOTES_FLAG[@]}"
-  else
-    log_warning "gh CLI not found; skipping release upload."
-  fi
-else
-  log_info "Skipping GitHub release upload (--no-upload specified)."
-fi
 
 log_success "Release $VERSION complete."

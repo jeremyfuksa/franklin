@@ -9,9 +9,6 @@ Franklin is a Zsh shell configuration system that provides a consistent, themed 
 ## Build and Release Commands
 
 ```bash
-# Build distribution artifacts
-bash src/scripts/build_release.sh
-
 # Test bootstrap installer (creates temporary install)
 bash test/bootstrap-tests.sh
 
@@ -46,19 +43,18 @@ bash src/update-all.sh --verbose
 
 **Library Modules (`src/lib/`)**
 - `os_detect.sh` - Platform detection (macOS/Debian/Fedora), exports `OS_FAMILY` and `HAS_HOMEBREW`
-- `install_helpers.sh` - Shared installation functions (Antigen, Starship, NVM setup)
+- `install_helpers.sh` - Shared installation functions (Sheldon, Starship, NVM setup)
 - `install_macos.sh` - macOS-specific package installation via Homebrew
 - `install_debian.sh` - Debian/Ubuntu package installation via apt
 - `install_fedora.sh` - Fedora/RHEL package installation via dnf
-- `ui.sh` - Campfire-themed UI system with badges, spinners, and section headers
+- `ui.sh` - Campfire-themed UI system with badges, streaming output helpers, and section headers
 - `colors.sh` - Color palette definitions (Ember/Ash palettes + Campfire UI chrome)
-- `versions.sh` - Pinned version constants for Antigen, Starship, NVM
+- `versions.sh` - Pinned version constants for Starship, NVM
 - `motd.zsh` - Message-of-the-day dashboard with system stats
 - `motd-helpers.zsh` - Helper functions for MOTD rendering
 
 **Build and Release (`src/scripts/`)**
-- `build_release.sh` - Packages `src/` into `dist/franklin.tar.gz`
-- `release.sh` - Automated release workflow: stamps VERSION, builds, commits, tags, pushes, uploads to GitHub
+- `release.sh` - Automated release workflow: stamps VERSION, commits, tags, pushes
 - `check_versions.sh` - Version checking utility for Franklin and dependencies
 - `current_franklin_version.sh` - Reads current Franklin version from VERSION file
 - `write_version_file.sh` - Writes version to VERSION file during release
@@ -70,14 +66,14 @@ Platform-specific logic is isolated in `lib/install_*.sh` modules. The main inst
 All platform installers follow the same contract:
 - Idempotent (safe to re-run)
 - Use package manager for system tools (brew/apt/dnf)
-- Install or update Antigen, Starship, NVM, Node LTS
+- Install or update Sheldon, Starship, NVM, Node LTS
 - Log via `lib/ui.sh` helpers (`log_info`, `log_success`, `log_warning`, `log_error`)
 
 ### UI System
 
 Franklin uses a consistent Campfire-themed UI across all scripts:
 - **Badges**: Fixed-width colored labels (`[UPDATE]`, `[BUILD]`, etc.) via `franklin_ui_log`
-- **Spinners**: Animated progress indicators via `franklin_ui_run_with_spinner`
+- **Streaming**: `franklin_ui_stream_filtered` streams package manager output in `auto` (filtered), `quiet`, or `verbose` modes with hang detection
 - **Section headers**: Divider lines via `franklin_ui_section`
 - **Color palette**: Campfire theme (Cello/Terracotta/Black Rock) for non-banner UI chrome
 - **MOTD palette**: User-selectable Ember/Ash palette for the dashboard banner
@@ -89,7 +85,7 @@ All UI functions respect `FRANKLIN_UI_QUIET=1` for suppressed output and `VERBOS
 `update-all.sh` implements a step-based update system with clear isolation:
 1. Franklin core (pulls latest from GitHub)
 2. OS packages (brew upgrade / apt upgrade / dnf upgrade)
-3. Antigen plugins (antigen update)
+3. Sheldon plugins (sheldon lock --update)
 4. Starship (self-update)
 5. Python + uv (package manager)
 6. NVM + Node LTS (version manager)
@@ -97,7 +93,7 @@ All UI functions respect `FRANKLIN_UI_QUIET=1` for suppressed output and `VERBOS
 
 Each step:
 - Runs in isolation with `set -e` error handling
-- Reports progress via UI spinners
+- Streams filtered package manager output (default `auto` mode; `--mode=quiet|verbose` supported)
 - Tracks success/failure counts
 - Continues on non-critical failures (exits 1 for warnings, 2 for errors)
 
@@ -138,13 +134,9 @@ Scopes: `os_detect`, `install`, `update`, `ui`, `motd`, `release`
 
 The release script:
 - Writes version to `VERSION` file
-- Rebuilds `dist/franklin.tar.gz` via `build_release.sh`
 - Commits with message `release: vX.Y.Z`
 - Creates git tag
 - Pushes commit + tag to origin
-- Uploads artifacts to GitHub release via `gh` CLI
-
-Use `--no-upload` to skip GitHub release creation (git operations only).
 
 ## Key Principles
 

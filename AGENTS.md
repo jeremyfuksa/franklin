@@ -2,12 +2,11 @@
 
 ## Project Structure & Module Organization
 - Core source lives under `src/`, including the primary shell scripts (`update-all.sh`, `install.sh`, `bootstrap.sh`), helper libraries in `src/lib/`, and user-facing config templates such as `src/.zshrc`.
-- Distribution artifacts are staged in `dist/franklin/` via the build script; run-time installs mirror this layout under `~/.local/share/franklin`.
+- Install assets are pulled directly from GitHub tag archives; run-time installs mirror the `src/` layout under `~/.local/share/franklin`.
 - Supporting assets: documentation (`README.md`, `CHANGELOG.md`), release tooling (`src/scripts/`), and tests under `test/` for shell helpers.
 
 ## Build, Test, and Development Commands
-- `./src/scripts/build_release.sh`: Syncs `src/` into `dist/franklin/` and generates `dist/franklin.tar.gz`.
-- `./src/scripts/release.sh vX.Y.Z [--no-upload]`: Stamps `VERSION`, rebuilds, commits, tags, pushes, and optionally uploads GitHub releases.
+- `./src/scripts/release.sh vX.Y.Z`: Stamps `VERSION`, commits, tags, and pushes.
 - `bash src/update-all.sh --help`: Quick sanity check to confirm argument parsing and step registration.
 - Tests (when present): `bash test/<name>.sh`.
 

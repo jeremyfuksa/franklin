@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Smoke test for bootstrap installer using local release artifacts.
+# Smoke test for bootstrap installer using a locally generated archive.
 
 set -euo pipefail
 
@@ -7,7 +7,8 @@ ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 TMP_ROOT="$(mktemp -d)"
 trap 'rm -rf "$TMP_ROOT"' EXIT
 
-bash "$ROOT_DIR/src/scripts/build_release.sh" >/dev/null
+ARCHIVE_PATH="$TMP_ROOT/franklin-bootstrap.tar.gz"
+git -C "$ROOT_DIR" archive --format=tar.gz --prefix="franklin-v0.0.0/src/" HEAD src >"$ARCHIVE_PATH"
 
 case "$(uname -s)" in
   Darwin)
@@ -40,9 +41,8 @@ case "$(uname -s)" in
     ;;
  esac
 
-ARCHIVE_PATH="$ROOT_DIR/dist/franklin-$OS_FAMILY.tar.gz"
-if [ ! -f "$ARCHIVE_PATH" ]; then
-  echo "Archive $ARCHIVE_PATH not found; build_release may have failed."
+if [ ! -s "$ARCHIVE_PATH" ]; then
+  echo "Archive $ARCHIVE_PATH not created."
   exit 1
 fi
 

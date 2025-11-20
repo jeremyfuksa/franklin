@@ -410,12 +410,10 @@ Maintainers can publish a new version with the automated helper once all planned
    ```bash
    src/scripts/release.sh --dry-run v1.1.0
    ```
-4. Run the real release (this stamps `VERSION`, rebuilds `dist/`, commits `release: v1.1.0`, tags, pushes, and uploads fresh tarballs via `gh`):
+4. Run the real release (this stamps `VERSION`, commits `release: v1.1.0`, tags, and pushes):
    ```bash
    src/scripts/release.sh v1.1.0
    ```
-5. Use `--no-upload` if you only want the git/tag operations, or re-run with a different version if something failed mid-flight.
-
 The script intentionally refuses to run if the working tree is dirty or if the tag already exists, keeping releases reproducible.
 
 All contributions must include documentation:
@@ -465,11 +463,10 @@ Add entry to [CHANGELOG.md](CHANGELOG.md) (if exists):
 Maintainers follow this release process:
 
 1. Ensure `master`/`main` is green (`bash test/test_install.sh`, `bash test/bootstrap-tests.sh`, etc.)
-2. Run `bash src/scripts/build_release.sh` to regenerate `dist/franklin.tar.gz`
-3. Update the changelog/version metadata if needed
-4. Commit and tag (e.g., `git tag vX.Y.Z && git push --tags`)
-5. Draft a GitHub release and upload the `franklin-*.tar.gz` artifacts
-6. Announce changes (release notes, README updates, etc.)
+2. Update the changelog/version metadata if needed
+3. Preview the release: `bash src/scripts/release.sh --dry-run vX.Y.Z`
+4. Execute the release: `bash src/scripts/release.sh vX.Y.Z` (stamps `VERSION`, commits, tags, pushes)
+5. Announce changes (release notes, README updates, etc.)
 
 Contributors don't need to worry about releases.
 

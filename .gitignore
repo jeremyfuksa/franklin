@@ -43,6 +43,7 @@ coverage/
 # Build artifacts
 build/
 out/
+dist/
 
 # Temporary files
 *.tmp

@@ -38,7 +38,7 @@ bash install.sh
 
 | Component | Notes |
 | --- | --- |
-| Zsh + Antigen | Franklin keeps a tidy `.zshrc` and installs anything missing. |
+| Zsh + Sheldon | Franklin keeps a tidy `.zshrc` and installs anything missing. |
 | Starship prompt | Configured via `starship.toml`; auto-enabled for a snappy shell. |
 | bat / batcat | Syntax-highlighted `cat` replacement; Franklin aliases `cat` ⇒ `bat`. |
 | fzf, ripgrep | Included on Linux for quick fuzzy search and grepping. |
@@ -47,13 +47,13 @@ bash install.sh
 | Fonts | MOTD status icons (``, ``, turtle) require a Nerd Font (e.g., Dank Mono Nerd Font). |
 | Campfire UI palette | Non-banner UI chrome (install/update logs, badges) uses the Campfire palette (Cello/Terracotta/Black Rock) for consistent Franklin branding. |
 
-Everything lives under `~/.config/franklin` (or your `--install-root`). The installer detects your OS (macOS, Debian/Ubuntu, or Fedora) and runs the appropriate setup. Before touching your existing setup, it backs up `.zshrc`, `.zshenv`, `.zprofile`, Antigen, and `~/.config/starship.toml` to `~/.local/share/franklin/backups/<timestamp>`.
+Everything lives under `~/.config/franklin` (or your `--install-root`). The installer detects your OS (macOS, Debian/Ubuntu, or Fedora) and runs the appropriate setup. Before touching your existing setup, it backs up `.zshrc`, `.zshenv`, `.zprofile`, your sheldon config, and `~/.config/starship.toml` to `~/.local/share/franklin/backups/<timestamp>`.
 
 ## Daily Moves
 
 | Command | Purpose |
 | --- | --- |
-| `update-all.sh` | Updates Franklin core files plus OS packages (brew/apt/dnf), Antigen, Starship, Python, uv, NVM, Node, npm globals, and version pins. Detects your OS and runs the appropriate update logic. |
+| `update-all.sh` | Streams real-time progress while updating Franklin core files, OS packages (brew/apt/dnf), Sheldon plugins, Starship, Python, uv, NVM, Node, npm globals, and version pins. Detects your OS, filters noisy output in `auto` mode, and accepts `--mode=quiet|auto|verbose`. |
 | `franklin` | Helper CLI wrapper; use `franklin update` for Franklin core only (via `update-franklin.sh`), `franklin update-all` for everything else, plus `franklin check`/`-v`. |
 | `motd` | Renders the Franklin dashboard on demand; auto-runs at login unless disabled. |
 | `reload` | Re-sources `.zshrc` after edits—Franklin's equivalent of poking his head out and checking his surroundings. |
@@ -65,6 +65,7 @@ Everything lives under `~/.config/franklin` (or your `--install-root`). The inst
 - **Local overrides**: add private aliases/functions to `~/.franklin.local.zsh` (auto-created, sourced after Franklin loads). Set `FRANKLIN_LOCAL_CONFIG` before install to change the path.
 - **MOTD services**: Docker containers are detected automatically; set `MOTD_SERVICES=(nginx postgresql redis)` (array or space-separated string) to track additional systemd/launchd services in the dashboard.
 - **Backups**: set `FRANKLIN_BACKUP_DIR=/path/to/dir` before installing if you want backups elsewhere.
+- **Streaming defaults**: create `~/.config/franklin/update.env` with `FRANKLIN_UPDATE_MODE=quiet` (or `auto`/`verbose`) and `FRANKLIN_UPDATE_TIMEOUT=600` to set your preferred `update-all.sh` mode globally.
 
 ## Troubleshooting
 
@@ -80,10 +81,7 @@ Everything lives under `~/.config/franklin` (or your `--install-root`). The inst
 Working on Franklin itself (not just using it)?
 
 ```bash
-# Build release artifacts
-bash src/scripts/build_release.sh
-
-# Ensure bootstrap flow works on your OS
+# Bootstrap smoke test (uses a GitHub-style archive from HEAD)
 bash test/bootstrap-tests.sh
 
 # Legacy installer tests (macOS-oriented)
@@ -100,7 +98,7 @@ Franklin now ships with an automated release helper:
 # Dry run to see what would happen
 src/scripts/release.sh --dry-run v1.1.0
 
-# Real release (stamps VERSION, builds dist/, commits, tags, uploads via gh)
+# Real release (stamps VERSION, commits, tags, pushes)
 src/scripts/release.sh v1.1.0
 ```
 
@@ -110,13 +108,13 @@ Before running the script:
 2. Commit all work (the release script requires a clean tree).
 3. Ensure you are authenticated with GitHub CLI (`gh auth status`).
 
-The script creates the commit (`release: vX.Y.Z`), tags it, pushes to `origin`, and uploads `dist/franklin.tar.gz` to a brand-new GitHub release. Use `--no-upload` if you only want the git/tag portion.
+The script creates the commit (`release: vX.Y.Z`), tags it, and pushes to `origin`.
 
 ## License & Credits
 
 MIT License. Check out the source at [github.com/jeremyfuksa/franklin](https://github.com/jeremyfuksa/franklin).
 
 Franklin stands on the shoulders of:
-- [Antigen](https://github.com/zsh-users/antigen) for plugin management
+- [Sheldon](https://github.com/rossmacarthur/sheldon) for plugin management
 - [Starship](https://github.com/starship/starship) for the prompt
 - [NVM](https://github.com/nvm-sh/nvm) for Node versioning

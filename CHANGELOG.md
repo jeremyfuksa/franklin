@@ -7,6 +7,30 @@ and the project aims to follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Added
+
+- `franklin_ui_stream_filtered` and `franklin_ui_stream_filtered_with_timeout` provide filtered, real-time output with hang detection and signal-safe cleanup.
+- `src/lib/streaming_filters.sh` centralizes Homebrew/apt/dnf/npm/tool filter presets plus package-count helpers.
+- `--mode=auto|quiet|verbose` flag (and `FRANKLIN_UPDATE_MODE`/`~/.config/franklin/update.env`) to control streaming verbosity in `update-all.sh`.
+- `test/streaming_filters_test.sh` and `test/streaming_integration_test.sh` cover filter accuracy and exit-code propagation.
+- Sheldon plugin management replaces Antigen, including automatic migration of legacy bundles to `plugins.toml` and new sheldon update step in `update-all.sh`.
+
+### Changed
+
+- `update-all.sh` now streams package manager output by default, replacing spinner-wrapped commands across Franklin core, OS packages, Antigen, Starship, Python, uv, NVM, and npm steps.
+- Added hang detection/timeout messaging plus SSH-aware defaults (`FRANKLIN_UPDATE_TIMEOUT`) for long-running updates.
+- README/CLAUDE documentation updated to describe streaming UI behavior and configuration.
+- Install workflow now generates `~/.config/franklin/sheldon/plugins.toml`, initializes Sheldon in `.zshrc`, and removes all Antigen dependencies.
+- Bootstrap now downloads GitHub tag archives directly and strips to the `src/` payload (no prebuilt dist/ tarball).
+
+### Removed
+
+- Removed `src/scripts/build_release.sh` and committed `dist/` artifacts; releases now rely on GitHub tag archives and a tag/commit-only workflow.
+
+### Documentation
+
+- Added `UPGRADING_TO_V2.md` outlining the v2 streaming behavior changes and compatibility notes.
+
 ## [1.6.0] - 2025-01-20
 
 ### Added
