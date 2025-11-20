@@ -96,6 +96,29 @@ stream_update() {
   fi
 }
 
+migrate_antigen_to_sheldon() {
+  local config_dir="$SHELDON_CONFIG_DIR"
+  local plugins_file="$config_dir/plugins.toml"
+  local template="$SCRIPT_DIR/sheldon/plugins.toml"
+  local antigen_dir="${FRANKLIN_ANTIGEN_DIR:-$HOME/.antigen}"
+
+  if [ -f "$plugins_file" ]; then
+    return 0
+  fi
+
+  if [ -f "$template" ]; then
+    mkdir -p "$config_dir"
+    cp "$template" "$plugins_file"
+    log_info "Initialized Sheldon config at $plugins_file"
+  else
+    log_warning "No Sheldon plugins configured at $plugins_file"
+  fi
+
+  if [ -d "$antigen_dir" ]; then
+    franklin_ui_substatus info "Legacy Antigen directory detected at $antigen_dir (no longer used)"
+  fi
+}
+
 print_section_header() {
   franklin_ui_blank_line
   franklin_ui_section "$1"
@@ -363,7 +386,7 @@ step_sheldon() {
     if [ -f "$template" ]; then
       mkdir -p "$config_dir"
       cp "$template" "$plugins_file"
-      franklin_ui_substatus info "Initialized Sheldon config at $plugins_file"
+      log_info "Initialized Sheldon config at $plugins_file"
     else
       log_warning "No Sheldon plugins configured at $plugins_file"
       return 1
@@ -701,6 +724,8 @@ main() {
 
   log_info "Starting unified system update..."
   echo ""
+
+  migrate_antigen_to_sheldon || true
 
   if [ "$FRANKLIN_ONLY" -eq 1 ]; then
     run_step "Franklin core" step_franklin_core || true
