@@ -12,4 +12,9 @@ if [ -z "${FRANKLIN_BOOTSTRAP_ARCHIVE:-}" ]; then
   export FRANKLIN_BOOTSTRAP_ARCHIVE="file://$tmp_archive"
 fi
 
+if [ -z "${FRANKLIN_VERSION:-}" ] && [ -f "$SCRIPT_DIR/VERSION" ]; then
+  export FRANKLIN_VERSION
+  FRANKLIN_VERSION="$(cat "$SCRIPT_DIR/VERSION" 2>/dev/null || true)"
+fi
+
 exec bash "$SCRIPT_DIR/src/update-all.sh" "$@"
