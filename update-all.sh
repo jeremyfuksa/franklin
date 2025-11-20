@@ -7,7 +7,9 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 if [ -z "${FRANKLIN_BOOTSTRAP_ARCHIVE:-}" ]; then
-  tmp_archive="$(mktemp "/tmp/franklin-head.XXXXXX.tar.gz")"
+  # Use mktemp to create a unique filename without colliding with existing files.
+  tmp_archive="$(mktemp "/tmp/franklin-head.XXXXXX")"
+  tmp_archive="${tmp_archive}.tar.gz"
   tar -czf "$tmp_archive" -C "$SCRIPT_DIR/src" .
   export FRANKLIN_BOOTSTRAP_ARCHIVE="file://$tmp_archive"
 fi
