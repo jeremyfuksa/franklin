@@ -358,6 +358,15 @@ mkdir -p "$SHELDON_CONFIG_DIR"
 ln -sf "${FRANKLIN_ROOT}/config/plugins.toml" "${SHELDON_CONFIG_DIR}/plugins.toml"
 ui_success "Sheldon config linked"
 
+# Download Sheldon plugins
+if command -v sheldon >/dev/null 2>&1; then
+    ui_branch "Downloading Sheldon plugins..."
+    sheldon lock --update 2>&1 | sed 's/^/      /' >&2 || ui_warning "Failed to download some plugins"
+    ui_success "Sheldon plugins downloaded"
+else
+    ui_warning "Sheldon not found, skipping plugin download"
+fi
+
 # Link Starship config
 STARSHIP_CONFIG="${HOME}/.config/starship.toml"
 ln -sf "${FRANKLIN_ROOT}/config/starship.toml" "$STARSHIP_CONFIG"

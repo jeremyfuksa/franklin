@@ -6,11 +6,73 @@
 export FRANKLIN_ROOT="${HOME}/.local/share/franklin"
 export FRANKLIN_CONFIG="${HOME}/.config/franklin"
 
-# Add Franklin CLI to PATH
-export PATH="${FRANKLIN_ROOT}/venv/bin:${PATH}"
+# --- PATH Management ---
+# Clean and deduplicate PATH, ensuring all required directories are present
 
-# Ensure ~/.local/bin is in PATH (for Sheldon, Starship, etc.)
-export PATH="${HOME}/.local/bin:${PATH}"
+# Function to deduplicate PATH
+_franklin_dedupe_path() {
+    local path_array=("${(s/:/)PATH}")
+    local -A seen
+    local new_path=""
+    
+    for dir in $path_array; do
+        if [[ -z "${seen[$dir]}" && -d "$dir" ]]; then
+            seen[$dir]=1
+            if [[ -z "$new_path" ]]; then
+                new_path="$dir"
+            else
+                new_path="$new_path:$dir"
+            fi
+        fi
+    done
+    
+    echo "$new_path"
+}
+
+# Build clean PATH with required directories
+_franklin_setup_path() {
+    local new_path=""
+    
+    # Priority directories (checked in order)
+    local priority_dirs=(
+        "${FRANKLIN_ROOT}/venv/bin"
+        "${HOME}/.local/bin"
+    )
+    
+    # Platform-specific directories
+    case "$(uname -s)" in
+        Darwin)
+            # macOS - add Homebrew paths
+            if [ -d "/opt/homebrew/bin" ]; then
+                priority_dirs+=("/opt/homebrew/bin" "/opt/homebrew/sbin")
+            elif [ -d "/usr/local/bin" ]; then
+                priority_dirs+=("/usr/local/bin" "/usr/local/sbin")
+            fi
+            ;;
+    esac
+    
+    # Add priority directories first
+    for dir in "${priority_dirs[@]}"; do
+        if [ -d "$dir" ]; then
+            if [[ -z "$new_path" ]]; then
+                new_path="$dir"
+            else
+                new_path="$new_path:$dir"
+            fi
+        fi
+    done
+    
+    # Append existing PATH
+    if [[ -n "$PATH" ]]; then
+        new_path="$new_path:$PATH"
+    fi
+    
+    # Deduplicate and export
+    export PATH="$(_franklin_dedupe_path)"
+}
+
+# Initialize PATH
+_franklin_setup_path
 
 # --- Platform Normalization ---
 # Detect OS and set platform-specific variables
