@@ -6,6 +6,7 @@ Commands follow the "Campfire" UX standards.
 """
 
 import os
+import re
 import shutil
 import platform
 import subprocess
@@ -47,6 +48,21 @@ app = typer.Typer(
 console = Console(no_color=_resolve_no_color(False))
 
 
+def _parse_numeric_selection(selection: str, default_idx: int, max_idx: int) -> int:
+    """Strip ANSI escapes / non-digits and return a validated index."""
+    cleaned = re.sub(r"\x1b\[[0-9;]*[A-Za-z]", "", selection)
+    digits = "".join(ch for ch in cleaned if ch.isdigit())
+    if not digits:
+        return default_idx
+    try:
+        value = int(digits)
+        if 1 <= value <= max_idx:
+            return value
+    except ValueError:
+        pass
+    return default_idx
+
+
 def _ensure_first_run_color(ctx: "typer.Context") -> None:
     """Prompt for MOTD color on first run when interactive."""
     # Skip if already configured or not a TTY
@@ -76,13 +92,10 @@ def _ensure_first_run_color(ctx: "typer.Context") -> None:
         show_default=True,
     ).strip()
 
-    try:
-        sel_int = int(selection)
-        if 1 <= sel_int <= len(choices):
-            color_choice = choices[sel_int - 1]
-        else:
-            raise ValueError
-    except ValueError:
+    sel_int = _parse_numeric_selection(selection, default_idx, len(choices))
+    if sel_int != default_idx or selection:
+        color_choice = choices[sel_int - 1]
+    else:
         ui.print_warning(f"Invalid choice: {selection}, using default {DEFAULT_CAMPFIRE_COLOR}")
         color_choice = DEFAULT_CAMPFIRE_COLOR
 
@@ -521,14 +534,11 @@ def config(
         save_color("custom", selection)
         return
 
-    try:
-        sel_int = int(selection)
-        if 1 <= sel_int <= len(choices):
-            color_choice = choices[sel_int - 1]
-            save_color(color_choice, CAMPFIRE_COLORS[color_choice]["base"])
-            return
-    except ValueError:
-        pass
+    sel_int = _parse_numeric_selection(selection, default_idx, len(choices))
+    if sel_int:
+        color_choice = choices[sel_int - 1]
+        save_color(color_choice, CAMPFIRE_COLORS[color_choice]["base"])
+        return
 
     ui.print_error(f"Invalid selection: {selection}")
     raise typer.Exit(code=1)
