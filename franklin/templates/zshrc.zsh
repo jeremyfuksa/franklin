@@ -11,22 +11,23 @@ export FRANKLIN_CONFIG="${HOME}/.config/franklin"
 
 # Function to deduplicate PATH
 _franklin_dedupe_path() {
-    local path_array=("${(s/:/)PATH}")
+    local input_path="${1:-$PATH}"
+    local path_array=("${(s/:/)input_path}")
     local -A seen
-    local new_path=""
+    local deduped_path=""
     
     for dir in $path_array; do
         if [[ -z "${seen[$dir]}" && -d "$dir" ]]; then
             seen[$dir]=1
-            if [[ -z "$new_path" ]]; then
-                new_path="$dir"
+            if [[ -z "$deduped_path" ]]; then
+                deduped_path="$dir"
             else
-                new_path="$new_path:$dir"
+                deduped_path="$deduped_path:$dir"
             fi
         fi
     done
     
-    echo "$new_path"
+    echo "$deduped_path"
 }
 
 # Build clean PATH with required directories
@@ -68,7 +69,7 @@ _franklin_setup_path() {
     fi
     
     # Deduplicate and export
-    export PATH="$(_franklin_dedupe_path)"
+    export PATH="$(_franklin_dedupe_path "$new_path")"
 }
 
 # Initialize PATH
