@@ -10,19 +10,22 @@ Franklin is a cozy Zsh shell setup inspired by the cartoon turtle you probably r
 ## Quick Start
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/jeremyfuksa/franklin/main/bootstrap.sh | bash
+curl -fsSL https://raw.githubusercontent.com/jeremyfuksa/franklin/main/franklin/src/bootstrap.sh | bash
+```
+
+Pin a specific version and install path:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/jeremyfuksa/franklin/main/franklin/src/bootstrap.sh \
+  | bash -s -- --dir "${HOME}/.local/share/franklin" --ref v2.0.0-beta-1
 ```
 
 That's it—Franklin downloads his shell and gently asks about your palette along the way. Need automation? Use the flags below.
 
 | Layer | Flag | Description |
 | --- | --- | --- |
-| bootstrap | `--release <tag>` | Install a specific GitHub release (default: latest) |
-| bootstrap | `--install-root <dir>` | Where to unpack Franklin (default: `~/.local/share/franklin`) |
-| bootstrap | `--owner <name>` / `--repo <name>` | Point at a fork or alternate repo |
-| bootstrap | `--archive <url>` | Use a custom tarball URL (skips release lookup) |
-| install | `--motd-color <name\|palette:name\|#hex>` | Skip the interactive prompt and pin a Franklin signature color (Ember/Ash palettes) |
-| install | `--verbose` | Show debug output during install |
+| bootstrap | `--ref <branch\|tag>` | Install from a specific ref (default: `main`) |
+| bootstrap | `--dir <path>` | Install location (default: `~/.local/share/franklin`) |
 
 Franklin signature color names (Ember/Ash palettes): `clay`, `flamingo`, `terracotta`, `ember`, `golden-amber`, `hay`, `sage`, `moss`, `pine`, `cello`, `blue-calx`, `dusk`, `mauve-earth`, `stone`. You can pin `ember:clay`, `ash:cello`, or any `#RRGGBB`.
 
@@ -58,9 +61,7 @@ Everything lives under `~/.config/franklin` (or your `--install-root`). The inst
 | `motd` | Renders the Franklin dashboard on demand; auto-runs at login unless disabled. |
 | `reload` | Re-sources `.zshrc` after edits—Franklin's equivalent of poking his head out and checking his surroundings. |
 
-## Customization
-
-- **Banner color**: rerun `install.sh --motd-color <name|palette:name|#hex>` or edit `~/.config/franklin/motd.env`. See the Quick Start table for Franklin signature names.
+- **Banner color**: on first interactive run you’ll be prompted; change anytime via `franklin config --color <name|#hex>` or edit `~/.config/franklin/config.env`. Signature names: `clay`, `flamingo`, `terracotta`, `ember`, `golden-amber`, `hay`, `sage`, `moss`, `pine`, `cello`, `blue-calx`, `dusk`, `mauve-earth`, `stone`.
 - **Prompt/plugins**: edit `starship.toml` or drop additional scripts in `~/.config/franklin/` and source them from `.zshrc`.
 - **Local overrides**: add private aliases/functions to `~/.franklin.local.zsh` (auto-created, sourced after Franklin loads). Set `FRANKLIN_LOCAL_CONFIG` before install to change the path.
 - **MOTD services**: Docker containers are detected automatically; set `MOTD_SERVICES=(nginx postgresql redis)` (array or space-separated string) to track additional systemd/launchd services in the dashboard.
