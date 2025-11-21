@@ -1,0 +1,158 @@
+❯ bash franklin/src/install.sh
+⏺ Detecting platform
+  ⎿  Platform: macos (macos) on arm64
+
+⏺ Creating backup of existing configuration
+  ⎿  Found .zshrc, backing up to /Users/jf065530/.local/share/franklin/backups/2025-11-20_231045
+  ⎿  ✔ Backup complete
+
+⏺ Configuring MOTD color
+  ⎿  Select your Campfire color for the MOTD banner:
+
+  ████  1) Cello        (#607a97)
+  ████  2) Terracotta   (#b87b6a)
+  ████  3) Black Rock   (#747b8a)
+  ████  4) Sage         (#8fb14b)
+  ████  5) Golden Amber (#f9c574)
+  ████  6) Flamingo     (#e75351)
+  ████  7) Blue Calx    (#b8c5d9)
+        8) Custom       (enter hex code)
+
+Enter choice [1-8, default: 1]: 4
+  ⎿  ✔ MOTD color set to Sage (#8fb14b)
+
+⏺ Installing dependencies
+  ⎿  Found Homebrew at /opt/homebrew/bin
+  ⎿  Installing packages via Homebrew...
+      Warning: curl 8.17.0 is already installed and up-to-date.
+      To reinstall 8.17.0, run:
+        brew reinstall curl
+  ⎿  ⚠ Some packages were already installed
+  ⎿  ✔ Dependencies installed
+
+⏺ Setting up NVM
+  ⎿  NVM already installed at /Users/jf065530/.nvm
+  ⎿  ✔ NVM ready
+
+⏺ Setting up Python virtual environment
+  ⎿  Creating virtual environment...
+  ⎿  ✔ Virtual environment created at /Users/jf065530/.local/share/franklin/venv
+
+⏺ Installing Franklin CLI
+  ⎿  Installing Python packages...
+      Collecting typer>=0.9.0
+      Collecting rich>=13.0.0
+      Collecting psutil>=5.9.0
+      Installing collected packages: typer, rich, psutil, franklin-cli
+  ⎿  ✔ Franklin CLI installed
+
+⏺ Linking configuration files
+  ⎿  Removing existing .zshrc symlink
+  ⎿  ✔ .zshrc linked to Franklin template
+  ⎿  ✔ Sheldon config linked
+  ⎿  ✔ Starship config linked
+
+✔ Franklin installation complete!
+
+Next steps:
+  1. Add Franklin to your PATH by adding this to your .zshrc:
+     export PATH="/Users/jf065530/.local/share/franklin/venv/bin:$PATH"
+
+  2. Restart your shell or run: exec zsh
+
+  3. Verify installation with: franklin doctor
+
+
+════════════════════════════════════════════════════════════════════════════════
+ERROR SCENARIOS
+════════════════════════════════════════════════════════════════════════════════
+
+⏺ Detecting platform
+  ⎿  ✗ Unsupported operating system: FreeBSD
+
+Installation failed. Please see https://github.com/youruser/franklin for supported platforms.
+
+
+────────────────────────────────────────────────────────────────────────────────
+
+⏺ Installing dependencies
+  ⎿  ✗ Homebrew is required on macOS but not found
+
+Please install Homebrew first:
+  /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+
+Then re-run the Franklin installer.
+
+
+────────────────────────────────────────────────────────────────────────────────
+
+⏺ Installing Franklin CLI
+  ⎿  Installing Python packages...
+      ERROR: Could not find a version that satisfies the requirement typer>=0.9.0
+      ERROR: No matching distribution found for typer>=0.9.0
+  ⎿  ⚠ Failed to install Franklin CLI (non-fatal)
+
+The CLI installation failed but core configuration is complete.
+You can still use Franklin's shell environment.
+
+
+════════════════════════════════════════════════════════════════════════════════
+WARNING SCENARIOS
+════════════════════════════════════════════════════════════════════════════════
+
+⏺ Creating backup of existing configuration
+  ⎿  No existing configuration files found
+  ⎿  ⚠ Skipping backup
+
+⏺ Installing dependencies
+  ⎿  Installing packages via apt...
+      Reading package lists... Done
+      Building dependency tree... Done
+      Package zsh is already the newest version (5.8.1-1)
+      Package git is already the newest version (1:2.34.1-1)
+  ⎿  ⚠ Some packages were already at the latest version
+  ⎿  ✔ Dependencies ready
+
+
+════════════════════════════════════════════════════════════════════════════════
+DESIGN GUIDELINES
+════════════════════════════════════════════════════════════════════════════════
+
+GLYPHS:
+  ⏺  Section header (action/major step)
+  ⎿  Sub-item/branch (indented 2 spaces)
+  ✔  Success indicator (use with ⎿ or standalone)
+  ⚠  Warning indicator (use with ⎿)
+  ✗  Error indicator (use with ⎿)
+
+SPACING:
+  - Blank line after each major section (⏺)
+  - No blank lines between sub-items within a section
+  - Command output indented 4+ spaces (2 beyond the ⎿)
+  - Final message gets extra blank line before it
+
+COLORS:
+  - Section headers: Default (no color)
+  - Sub-items: Default (no color)
+  - ✔ Success: Green (#a3be8c)
+  - ⚠ Warning: Yellow (#ebcb8b)
+  - ✗ Error: Red (#bf616a)
+  - Command output: Dimmed/gray when verbose
+
+HIERARCHY:
+  Level 0: ⏺ Header
+  Level 1:   ⎿  Sub-action
+  Level 2:       Output (4-space indent)
+  Level 3:         Nested output (6-space indent)
+
+MESSAGES:
+  - Success: "✔ Task complete" (affirmative, specific)
+  - Warning: "⚠ Some condition occurred" (informative, non-blocking)
+  - Error: "✗ Failed because reason" (clear, actionable)
+  - Info: Regular text with ⎿ (neutral, descriptive)
+
+BREATHING:
+  - Each major section is visually separated
+  - Output doesn't feel cramped
+  - Final summary gets extra space
+  - Error messages include remediation steps

@@ -19,6 +19,9 @@ from .constants import (
     GLYPH_BRANCH,
     GLYPH_LOGIC,
     GLYPH_WAIT,
+    GLYPH_SUCCESS,
+    GLYPH_WARNING,
+    GLYPH_ERROR,
     UI_ERROR_COLOR,
     UI_SUCCESS_COLOR,
     UI_INFO_COLOR,
@@ -90,27 +93,41 @@ class CampfireUI:
         output = f"{GLYPH_LOGIC} {text}"
         self.console.print(output)
 
+    def section_end(self) -> None:
+        """
+        Print a blank line for breathing room between sections.
+        """
+        self.console.print()
+
     def print_error(self, text: str) -> None:
         """
         Print an error message with red styling.
 
-        Format: ⎿  text (in red)
+        Format: ⎿  ✗ text (in red)
 
         Args:
             text: The error message
         """
-        self.print_branch(text, style=self.style_error if self.is_tty else None)
+        output = f"{GLYPH_BRANCH}  {GLYPH_ERROR} {text}"
+        if self.is_tty:
+            self.console.print(output, style=self.style_error)
+        else:
+            self.console.print(output)
 
     def print_success(self, text: str) -> None:
         """
         Print a success message with green styling.
 
-        Format: ⎿  text (in green)
+        Format: ⎿  ✔ text (in green)
 
         Args:
             text: The success message
         """
-        self.print_branch(text, style=self.style_success if self.is_tty else None)
+        output = f"{GLYPH_BRANCH}  {GLYPH_SUCCESS} {text}"
+        if self.is_tty:
+            self.console.print(output, style=self.style_success)
+        else:
+            self.console.print(output)
 
     def print_info(self, text: str) -> None:
         """
@@ -127,12 +144,31 @@ class CampfireUI:
         """
         Print a warning message with yellow styling.
 
-        Format: ⎿  text (in yellow)
+        Format: ⎿  ⚠ text (in yellow)
 
         Args:
             text: The warning message
         """
-        self.print_branch(text, style=self.style_warning if self.is_tty else None)
+        output = f"{GLYPH_BRANCH}  {GLYPH_WARNING} {text}"
+        if self.is_tty:
+            self.console.print(output, style=self.style_warning)
+        else:
+            self.console.print(output)
+
+    def print_final_success(self, text: str) -> None:
+        """
+        Print a final success message without branch glyph.
+
+        Format: ✔ text (standalone, in green)
+
+        Args:
+            text: The success message
+        """
+        output = f"{GLYPH_SUCCESS} {text}"
+        if self.is_tty:
+            self.console.print(output, style=self.style_success)
+        else:
+            self.console.print(output)
 
     def print_columnar(self, data: dict[str, str], indent: int = 3) -> None:
         """

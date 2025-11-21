@@ -44,6 +44,8 @@ done
 GLYPH_ACTION="⏺"
 GLYPH_BRANCH="⎿"
 GLYPH_LOGIC="∴"
+GLYPH_SUCCESS="✔"
+GLYPH_ERROR="✗"
 
 # Colors (ANSI)
 COLOR_ERROR="\033[38;2;191;97;106m"    # #bf616a
@@ -63,26 +65,40 @@ ui_header() {
 }
 
 ui_branch() {
-    # ⎿  text
+    # ⎿  text (2-space indent)
     printf "%s  %s\n" "${GLYPH_BRANCH}" "$*" >&2
 }
 
+ui_section_end() {
+    # Blank line for breathing room between sections
+    printf "\n" >&2
+}
+
 ui_error() {
-    # ⎿  text (in red)
+    # ⎿  ✗ text (in red, then exit)
     if [ "$USE_COLOR" = true ]; then
-        printf "%s  %b%s%b\n" "${GLYPH_BRANCH}" "${COLOR_ERROR}" "$*" "${COLOR_RESET}" >&2
+        printf "%s  %b%s %s%b\n" "${GLYPH_BRANCH}" "${COLOR_ERROR}" "${GLYPH_ERROR}" "$*" "${COLOR_RESET}" >&2
     else
-        printf "%s  %s\n" "${GLYPH_BRANCH}" "$*" >&2
+        printf "%s  %s %s\n" "${GLYPH_BRANCH}" "${GLYPH_ERROR}" "$*" >&2
     fi
     exit 1
 }
 
 ui_success() {
-    # ⎿  text (in green)
+    # ⎿  ✔ text (in green)
     if [ "$USE_COLOR" = true ]; then
-        printf "%s  %b%s%b\n" "${GLYPH_BRANCH}" "${COLOR_SUCCESS}" "$*" "${COLOR_RESET}" >&2
+        printf "%s  %b%s %s%b\n" "${GLYPH_BRANCH}" "${COLOR_SUCCESS}" "${GLYPH_SUCCESS}" "$*" "${COLOR_RESET}" >&2
     else
-        printf "%s  %s\n" "${GLYPH_BRANCH}" "$*" >&2
+        printf "%s  %s %s\n" "${GLYPH_BRANCH}" "${GLYPH_SUCCESS}" "$*" >&2
+    fi
+}
+
+ui_final_success() {
+    # ✔ text (standalone, no branch, in green)
+    if [ "$USE_COLOR" = true ]; then
+        printf "%b%s %s%b\n" "${COLOR_SUCCESS}" "${GLYPH_SUCCESS}" "$*" "${COLOR_RESET}" >&2
+    else
+        printf "%s %s\n" "${GLYPH_SUCCESS}" "$*" >&2
     fi
 }
 
@@ -120,6 +136,7 @@ if ! command -v python3 >/dev/null 2>&1; then
 fi
 
 ui_success "Pre-flight checks passed"
+ui_section_end
 
 # --- Fetch Franklin ---
 ui_header "Fetching Franklin"
@@ -137,6 +154,7 @@ git clone --branch "$GIT_REF" --depth 1 "$REPO_URL" "$INSTALL_DIR" 2>&1 | \
     sed 's/^/  /' >&2
 
 ui_success "Franklin fetched to $INSTALL_DIR"
+ui_section_end
 
 # --- Hand off to installer ---
 ui_branch "Starting installation..."

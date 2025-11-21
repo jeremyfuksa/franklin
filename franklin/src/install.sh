@@ -30,6 +30,9 @@ GLYPH_ACTION="⏺"
 GLYPH_BRANCH="⎿"
 GLYPH_LOGIC="∴"
 GLYPH_WAIT="✻"
+GLYPH_SUCCESS="✔"
+GLYPH_WARNING="⚠"
+GLYPH_ERROR="✗"
 
 # Colors (ANSI)
 COLOR_ERROR="\033[38;2;191;97;106m"    # #bf616a
@@ -51,7 +54,7 @@ ui_header() {
 }
 
 ui_branch() {
-    # ⎿  text (3-space indent to align under parent glyph)
+    # ⎿  text (2-space indent to align under parent glyph)
     echo "${GLYPH_BRANCH}  $*" >&2
 }
 
@@ -60,31 +63,45 @@ ui_logic() {
     echo "${GLYPH_LOGIC} $*" >&2
 }
 
+ui_section_end() {
+    # Blank line for breathing room between sections
+    echo "" >&2
+}
+
 ui_error() {
-    # ⎿  text (in red)
+    # ⎿  ✗ text (in red, then exit)
     if [ "$USE_COLOR" = true ]; then
-        echo -e "${GLYPH_BRANCH}  ${COLOR_ERROR}$*${COLOR_RESET}" >&2
+        echo -e "${GLYPH_BRANCH}  ${COLOR_ERROR}${GLYPH_ERROR} $*${COLOR_RESET}" >&2
     else
-        echo "${GLYPH_BRANCH}  $*" >&2
+        echo "${GLYPH_BRANCH}  ${GLYPH_ERROR} $*" >&2
     fi
     exit 1
 }
 
 ui_success() {
-    # ⎿  text (in green)
+    # ⎿  ✔ text (in green)
     if [ "$USE_COLOR" = true ]; then
-        echo -e "${GLYPH_BRANCH}  ${COLOR_SUCCESS}$*${COLOR_RESET}" >&2
+        echo -e "${GLYPH_BRANCH}  ${COLOR_SUCCESS}${GLYPH_SUCCESS} $*${COLOR_RESET}" >&2
     else
-        echo "${GLYPH_BRANCH}  $*" >&2
+        echo "${GLYPH_BRANCH}  ${GLYPH_SUCCESS} $*" >&2
     fi
 }
 
 ui_warning() {
-    # ⎿  text (in yellow)
+    # ⎿  ⚠ text (in yellow)
     if [ "$USE_COLOR" = true ]; then
-        echo -e "${GLYPH_BRANCH}  ${COLOR_WARNING}$*${COLOR_RESET}" >&2
+        echo -e "${GLYPH_BRANCH}  ${COLOR_WARNING}${GLYPH_WARNING} $*${COLOR_RESET}" >&2
     else
-        echo "${GLYPH_BRANCH}  $*" >&2
+        echo "${GLYPH_BRANCH}  ${GLYPH_WARNING} $*" >&2
+    fi
+}
+
+ui_final_success() {
+    # ✔ text (standalone, no branch, in green)
+    if [ "$USE_COLOR" = true ]; then
+        echo -e "${COLOR_SUCCESS}${GLYPH_SUCCESS} $*${COLOR_RESET}" >&2
+    else
+        echo "${GLYPH_SUCCESS} $*" >&2
     fi
 }
 
@@ -127,6 +144,7 @@ case "$(uname -s)" in
 esac
 
 ui_success "Platform: $OS_FAMILY ($OS_DISTRO) on $OS_ARCH"
+ui_section_end
 
 # --- Backup Existing Configuration ---
 ui_header "Creating backup of existing configuration"
@@ -142,6 +160,7 @@ for file in .zshrc .zprofile .zshenv; do
 done
 
 ui_success "Backup complete"
+ui_section_end
 
 # --- Color Display Helper ---
 # Convert hex color to ANSI 24-bit color code and display a colored swatch
@@ -218,6 +237,7 @@ mkdir -p "$CONFIG_DIR"
     echo "MOTD_COLOR=\"${MOTD_COLOR}\""
 } > "$CONFIG_FILE"
 ui_success "MOTD color set to $MOTD_COLOR_NAME ($MOTD_COLOR)"
+ui_section_end
 
 # --- Install Dependencies ---
 ui_header "Installing dependencies"
@@ -282,6 +302,7 @@ case "$OS_FAMILY" in
 esac
 
 ui_success "Dependencies installed"
+ui_section_end
 
 # --- Install NVM ---
 ui_header "Setting up NVM"
@@ -295,6 +316,7 @@ else
 fi
 
 ui_success "NVM ready"
+ui_section_end
 
 # --- Set up Python Virtual Environment ---
 ui_header "Setting up Python virtual environment"
@@ -313,6 +335,7 @@ ui_header "Installing Franklin CLI"
     ui_warning "Failed to install Franklin CLI (non-fatal)"
 
 ui_success "Franklin CLI installed"
+ui_section_end
 
 # --- Symlink Configuration Files ---
 ui_header "Linking configuration files"
@@ -339,10 +362,10 @@ ui_success "Sheldon config linked"
 STARSHIP_CONFIG="${HOME}/.config/starship.toml"
 ln -sf "${FRANKLIN_ROOT}/config/starship.toml" "$STARSHIP_CONFIG"
 ui_success "Starship config linked"
+ui_section_end
 
 # --- Post-Install Instructions ---
-echo "" >&2
-ui_success "Franklin installation complete!"
+ui_final_success "Franklin installation complete!"
 echo "" >&2
 echo "Next steps:" >&2
 echo "  1. Add Franklin to your PATH by adding this to your .zshrc:" >&2

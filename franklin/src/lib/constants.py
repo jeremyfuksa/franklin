@@ -68,6 +68,9 @@ GLYPH_ACTION = "⏺"
 GLYPH_BRANCH = "⎿"
 GLYPH_LOGIC = "∴"
 GLYPH_WAIT = "✻"
+GLYPH_SUCCESS = "✔"
+GLYPH_WARNING = "⚠"
+GLYPH_ERROR = "✗"
 
 # --- MOTD Layout Constants ---
 MOTD_MAX_WIDTH = 80

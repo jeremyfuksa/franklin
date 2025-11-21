@@ -1,0 +1,144 @@
+════════════════════════════════════════════════════════════════════════════════
+FRANKLIN CAMPFIRE UI DESIGN REFERENCE
+════════════════════════════════════════════════════════════════════════════════
+
+VISUAL HIERARCHY:
+
+⏺ Section Header (Level 0)
+  ⎿  Sub-action or info (Level 1)
+  ⎿  ✔ Success message (Level 1)
+  ⎿  ⚠ Warning message (Level 1)
+  ⎿  ✗ Error message (Level 1)
+      Command output (Level 2, indented 4+ spaces)
+        Nested output (Level 3, indented 6+ spaces)
+
+────────────────────────────────────────────────────────────────────────────────
+
+GLYPHS AND THEIR MEANINGS:
+
+⏺  Action/Section Header - Marks the start of a major operation
+⎿  Branch - Sub-item or related action under a section
+✔  Success - Operation completed successfully
+⚠  Warning - Non-critical issue or informational alert
+✗  Error - Critical failure (followed by exit)
+∴  Logic - Reasoning or decision point (rarely used)
+✻  Wait - Long-running operation indicator (future use)
+
+────────────────────────────────────────────────────────────────────────────────
+
+SPACING RULES:
+
+1. Blank line after each completed section (ui_section_end)
+2. No blank lines between items within a section
+3. Final success message gets blank line before it
+4. Error messages get extra context after them
+
+────────────────────────────────────────────────────────────────────────────────
+
+COLOR PALETTE:
+
+Green  (#a3be8c) - ✔ Success indicators
+Yellow (#ebcb8b) - ⚠ Warning indicators
+Red    (#bf616a) - ✗ Error indicators
+Default/White    - ⏺ Headers, ⎿ branches, regular text
+
+────────────────────────────────────────────────────────────────────────────────
+
+COMPLETE EXAMPLE (SUCCESS PATH):
+
+⏺ Detecting platform
+  ⎿  Platform: macos (macos) on arm64
+  ⎿  ✔ Platform detected
+
+⏺ Installing dependencies
+  ⎿  Found Homebrew at /opt/homebrew/bin
+  ⎿  Installing packages via Homebrew...
+      ==> Downloading curl-8.17.0...
+      ==> Installing curl
+  ⎿  ✔ Dependencies installed
+
+⏺ Setting up Python virtual environment
+  ⎿  Creating virtual environment...
+  ⎿  ✔ Virtual environment created at /Users/you/.local/share/franklin/venv
+
+✔ Franklin installation complete!
+
+────────────────────────────────────────────────────────────────────────────────
+
+EXAMPLE (WITH WARNING):
+
+⏺ Installing dependencies
+  ⎿  Found Homebrew at /opt/homebrew/bin
+  ⎿  Installing packages via Homebrew...
+      Warning: curl 8.17.0 is already installed and up-to-date.
+  ⎿  ⚠ Some packages were already installed
+  ⎿  ✔ Dependencies ready
+
+────────────────────────────────────────────────────────────────────────────────
+
+EXAMPLE (WITH ERROR):
+
+⏺ Detecting platform
+  ⎿  ✗ Unsupported operating system: FreeBSD
+
+Installation failed. Franklin supports macOS, Debian, and RHEL-based systems.
+Please see https://github.com/youruser/franklin for more information.
+
+────────────────────────────────────────────────────────────────────────────────
+
+EXAMPLE (BACKUP WITH NO FILES):
+
+⏺ Creating backup of existing configuration
+  ⎿  No existing configuration files found
+  ⎿  ⚠ Skipping backup
+
+────────────────────────────────────────────────────────────────────────────────
+
+EXAMPLE (NESTED OUTPUT):
+
+⏺ Installing Franklin CLI
+  ⎿  Installing Python packages...
+      Collecting typer>=0.9.0
+        Downloading typer-0.9.0-py3-none-any.whl (45 kB)
+      Collecting rich>=13.0.0
+        Using cached rich-13.7.0-py3-none-any.whl (240 kB)
+      Installing collected packages: typer, rich, psutil, franklin-cli
+      Successfully installed franklin-cli-2.0.0
+  ⎿  ✔ Franklin CLI installed
+
+────────────────────────────────────────────────────────────────────────────────
+
+BASH FUNCTIONS:
+
+ui_header()         - ⏺ Section header
+ui_branch()         - ⎿  Regular sub-item
+ui_success()        - ⎿  ✔ Success message
+ui_warning()        - ⎿  ⚠ Warning message
+ui_error()          - ⎿  ✗ Error message (exits)
+ui_section_end()    - Blank line between sections
+ui_final_success()  - ✔ Final message (no branch glyph)
+
+────────────────────────────────────────────────────────────────────────────────
+
+PYTHON EQUIVALENTS (lib/ui.py):
+
+ui.print_header()   - ⏺ Section header
+ui.print_branch()   - ⎿  Regular sub-item
+ui.print_success()  - ⎿  ✔ Success message
+ui.print_warning()  - ⎿  ⚠ Warning message
+ui.print_error()    - ⎿  ✗ Error message (exits)
+
+────────────────────────────────────────────────────────────────────────────────
+
+DESIGN PHILOSOPHY:
+
+"Structured, Connected, Minimal"
+
+- Structured: Clear visual hierarchy shows relationships
+- Connected: Tree structure connects actions to outcomes
+- Minimal: Only essential information, breathing room for scannability
+
+The design should feel calm, organized, and professional.
+Success is affirmed, warnings are noted, errors are clear and actionable.
+
+════════════════════════════════════════════════════════════════════════════════

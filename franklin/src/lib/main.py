@@ -153,6 +153,7 @@ def update(
     Update Franklin core files from the repository.
     """
     ui.print_header("Updating Franklin Core")
+    ui.print_branch(f"Franklin root: {FRANKLIN_ROOT}")
 
     # Check if we're in a git repository
     if not (FRANKLIN_ROOT / ".git").exists():
@@ -171,7 +172,7 @@ def update(
             raise typer.Exit()
 
     # Run git pull
-    ui.print_branch("Running git pull...")
+    ui.print_branch("Pulling latest changes...")
     try:
         result = subprocess.run(
             ["git", "-C", str(FRANKLIN_ROOT), "pull"],
@@ -179,13 +180,16 @@ def update(
             text=True,
             check=True,
         )
-        ui.print_success("Franklin core updated")
         if result.stdout:
             for line in result.stdout.strip().split("\n"):
-                ui.print_branch(line)
+                if line:  # Skip empty lines
+                    ui.console.print(f"      {line}")
+        ui.print_success("Franklin core updated")
     except subprocess.CalledProcessError as e:
         ui.print_error(f"Failed to update: {e.stderr}")
         raise typer.Exit(code=1)
+    
+    ui.section_end()
 
 
 @app.command()
@@ -205,42 +209,64 @@ def update_all(
     With --system: Updates OS packages, Sheldon plugins, Starship, NVM, and Node.
     Without --system: Updates only Franklin core and Sheldon plugins.
     """
-    ui.print_header("Running update-all")
-
+    ui.print_header("Franklin Update")
+    
     # Step 1: Update Franklin core
-    ui.print_branch("Updating Franklin core...")
-    try:
-        subprocess.run(
-            [sys.executable, "-m", "lib.main", "update", "--yes" if yes else ""],
-            check=True,
-        )
-    except subprocess.CalledProcessError:
-        ui.print_error("Failed to update Franklin core")
+    ui.print_header("Updating Franklin core")
+    ui.print_branch(f"Franklin root: {FRANKLIN_ROOT}")
+    
+    if not (FRANKLIN_ROOT / ".git").exists():
+        ui.print_warning("Franklin root is not a git repository, skipping core update")
+    else:
+        ui.print_branch("Pulling latest changes...")
+        try:
+            result = subprocess.run(
+                ["git", "-C", str(FRANKLIN_ROOT), "pull"],
+                capture_output=True,
+                text=True,
+                check=True,
+            )
+            if result.stdout:
+                for line in result.stdout.strip().split("\n"):
+                    if line:
+                        ui.console.print(f"      {line}")
+            ui.print_success("Franklin core updated")
+        except subprocess.CalledProcessError as e:
+            ui.print_error(f"Failed to update Franklin core: {e.stderr}")
+    
+    ui.section_end()
 
     # Step 2: Update Sheldon plugins
-    ui.print_branch("Updating Sheldon plugins...")
+    ui.print_header("Updating Sheldon plugins")
     try:
-        subprocess.run(
+        result = subprocess.run(
             ["sheldon", "lock", "--update"],
             capture_output=True,
             text=True,
             check=True,
         )
+        if result.stdout:
+            for line in result.stdout.strip().split("\n"):
+                if line and not line.startswith("Warning"):
+                    ui.console.print(f"      {line}")
         ui.print_success("Sheldon plugins updated")
     except subprocess.CalledProcessError as e:
         ui.print_warning(f"Failed to update Sheldon plugins: {e.stderr}")
     except FileNotFoundError:
         ui.print_warning("Sheldon not found, skipping plugin update")
+    
+    ui.section_end()
 
     # Step 3: System packages (if --system)
     if system:
-        ui.print_branch("Updating system packages...")
+        ui.print_header("Updating system packages")
         # Detect OS and run appropriate package manager
         # This is a placeholder - full implementation would detect OS
         # and run brew/apt/dnf accordingly
         ui.print_info("System package update not yet implemented")
+        ui.section_end()
 
-    ui.print_success("Update complete")
+    ui.print_final_success("Update complete!")
 
 
 @app.command()

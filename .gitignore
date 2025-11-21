@@ -29,6 +29,7 @@ Thumbs.db
 .env.local
 .env.*.local
 docs/
+franklin/src/franklin_cli.egg-info/
 
 # Node.js (for spec 006: NVM integration)
 node_modules/
