@@ -2,34 +2,31 @@
 MOTD (Message of the Day) Generator
 
 Implements the Campfire-style MOTD banner with:
-- Adaptive layout (40-80 columns)
-- Border lines using box-drawing characters
-- System stats (Hostname, IP, Franklin Version)
+- Horizontal rule dividers
+- System stats with ASCII progress bars
+- Docker containers status (grid layout)
+- System services status (grid layout)
 - User-selected Campfire color palette
-- Platform-specific system info gathering
 """
 
 import os
 import platform
 import socket
 import subprocess
-import sys
+import shutil
 from pathlib import Path
-from typing import Optional
+from typing import Optional, List, Dict, Tuple
 
 import psutil
 from rich.console import Console
-from rich.panel import Panel
-from rich.text import Text
-from rich.align import Align
 
 from .constants import (
     CAMPFIRE_COLORS,
     DEFAULT_CAMPFIRE_COLOR,
     MOTD_MAX_WIDTH,
     MOTD_MIN_WIDTH,
-    MOTD_BORDER_CHAR,
     CONFIG_FILE,
+    GLYPH_ACTION,
 )
 
 
@@ -52,7 +49,6 @@ def get_hostname() -> str:
 def get_ip_address() -> str:
     """Get the primary IP address."""
     try:
-        # Connect to external DNS to find local IP (doesn't actually send data)
         with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as s:
             s.connect(("8.8.8.8", 80))
             return s.getsockname()[0]
@@ -60,26 +56,11 @@ def get_ip_address() -> str:
         return "0.0.0.0"
 
 
-def get_system_stats() -> dict:
-    """
-    Gather system statistics.
-
-    Returns:
-        Dictionary with system information
-    """
-    stats = {
-        "hostname": get_hostname(),
-        "ip_address": get_ip_address(),
-        "franklin_version": get_franklin_version(),
-        "os": "",
-        "memory": "",
-    }
-
-    # Platform-specific OS detection
+def get_os_version() -> str:
+    """Get OS version string."""
     system = platform.system()
 
     if system == "Darwin":
-        # macOS: Use sw_vers
         try:
             result = subprocess.run(
                 ["sw_vers", "-productVersion"],
@@ -87,53 +68,173 @@ def get_system_stats() -> dict:
                 text=True,
                 check=True,
             )
-            macos_version = result.stdout.strip()
-            stats["os"] = f"macOS {macos_version}"
+            return f"macOS {result.stdout.strip()}"
         except Exception:
-            stats["os"] = "macOS (version unknown)"
-
-        # macOS memory via psutil
-        try:
-            mem = psutil.virtual_memory()
-            total_gb = mem.total / (1024 ** 3)
-            used_gb = mem.used / (1024 ** 3)
-            stats["memory"] = f"{used_gb:.1f}GB / {total_gb:.1f}GB ({mem.percent:.0f}%)"
-        except Exception:
-            stats["memory"] = "unknown"
-
+            return "macOS"
     elif system == "Linux":
-        # Linux: Parse /etc/os-release
         try:
-            os_release = {}
             with open("/etc/os-release") as f:
+                os_release = {}
                 for line in f:
                     if "=" in line:
                         key, value = line.strip().split("=", 1)
                         os_release[key] = value.strip('"')
 
-            distro_name = os_release.get("NAME", "Linux")
-            distro_version = os_release.get("VERSION_ID", "")
-            if distro_version:
-                stats["os"] = f"{distro_name} {distro_version}"
-            else:
-                stats["os"] = distro_name
+                distro = os_release.get("NAME", "Linux")
+                version = os_release.get("VERSION_ID", "")
+                return f"{distro} {version}" if version else distro
         except Exception:
-            stats["os"] = "Linux (unknown distribution)"
-
-        # Linux memory from /proc/meminfo
-        try:
-            mem = psutil.virtual_memory()
-            total_gb = mem.total / (1024 ** 3)
-            used_gb = mem.used / (1024 ** 3)
-            stats["memory"] = f"{used_gb:.1f}GB / {total_gb:.1f}GB ({mem.percent:.0f}%)"
-        except Exception:
-            stats["memory"] = "unknown"
-
+            return "Linux"
     else:
-        stats["os"] = system
-        stats["memory"] = "unknown"
+        return system
 
-    return stats
+
+def create_progress_bar(percent: float, width: int = 10) -> str:
+    """
+    Create an ASCII progress bar.
+
+    Args:
+        percent: Percentage (0-100)
+        width: Width of the bar in characters
+
+    Returns:
+        String like |███████░░░|
+    """
+    filled = int((percent / 100) * width)
+    empty = width - filled
+    return f"|{'█' * filled}{'░' * empty}|"
+
+
+def get_disk_stats() -> Tuple[str, float, str, str]:
+    """
+    Get disk usage statistics.
+
+    Returns:
+        Tuple of (progress_bar, percent, used, total)
+    """
+    try:
+        disk = shutil.disk_usage("/")
+        total_gb = disk.total / (1024 ** 3)
+        used_gb = disk.used / (1024 ** 3)
+        percent = (disk.used / disk.total) * 100
+
+        bar = create_progress_bar(percent)
+        return bar, percent, f"{used_gb:.0f}G", f"{total_gb:.0f}G"
+    except Exception:
+        return "|??????????|", 0, "??", "??"
+
+
+def get_memory_stats() -> Tuple[str, str]:
+    """
+    Get memory usage statistics.
+
+    Returns:
+        Tuple of (used, total)
+    """
+    try:
+        mem = psutil.virtual_memory()
+        used_gb = mem.used / (1024 ** 3)
+        total_gb = mem.total / (1024 ** 3)
+        return f"{used_gb:.0f}G", f"{total_gb:.0f}G"
+    except Exception:
+        return "??", "??"
+
+
+def get_docker_containers() -> List[str]:
+    """
+    Get list of running Docker containers.
+
+    Returns:
+        List of container names
+    """
+    try:
+        result = subprocess.run(
+            ["docker", "ps", "--format", "{{.Names}}"],
+            capture_output=True,
+            text=True,
+            check=True,
+        )
+        containers = [name.strip() for name in result.stdout.strip().split("\n") if name.strip()]
+        return containers
+    except Exception:
+        return []
+
+
+def get_system_services() -> List[str]:
+    """
+    Get list of running system services.
+
+    Returns:
+        List of service names
+    """
+    services = []
+    system = platform.system()
+
+    if system == "Darwin":
+        # macOS: Check for specific services via launchctl
+        try:
+            result = subprocess.run(
+                ["launchctl", "list"],
+                capture_output=True,
+                text=True,
+                check=True,
+            )
+            # Parse output and filter for common services
+            # This is a simplified approach - could be enhanced
+            for line in result.stdout.split("\n"):
+                # Look for common service patterns
+                for svc in ["meshtasticd", "spyserver"]:
+                    if svc in line.lower():
+                        services.append(svc)
+        except Exception:
+            pass
+    elif system == "Linux":
+        # Linux: Use systemctl
+        try:
+            result = subprocess.run(
+                ["systemctl", "--type=service", "--state=running", "--no-pager", "--no-legend"],
+                capture_output=True,
+                text=True,
+                check=True,
+            )
+            for line in result.stdout.split("\n"):
+                if line.strip():
+                    # Extract service name (first column)
+                    parts = line.split()
+                    if parts:
+                        service_name = parts[0].replace(".service", "")
+                        services.append(service_name)
+        except Exception:
+            pass
+
+    return services
+
+
+def format_grid(items: List[str], width: int, max_item_width: int = 22) -> List[str]:
+    """
+    Format items in a grid layout.
+
+    Args:
+        items: List of item names
+        width: Terminal width
+        max_item_width: Maximum width for each item including glyph and padding
+
+    Returns:
+        List of formatted lines
+    """
+    if not items:
+        return []
+
+    # Calculate how many items fit per line
+    items_per_line = max(1, (width - 1) // max_item_width)
+
+    lines = []
+    for i in range(0, len(items), items_per_line):
+        chunk = items[i:i + items_per_line]
+        formatted = [f" {GLYPH_ACTION} {item:<{max_item_width - 4}}" for item in chunk]
+        lines.append("".join(formatted))
+
+    return lines
 
 
 def load_motd_color() -> str:
@@ -177,41 +278,52 @@ def render_motd(width: Optional[int] = None) -> None:
     # Load user's color preference
     color = load_motd_color()
 
-    # Gather system stats
-    stats = get_system_stats()
+    # Gather all stats
+    hostname = get_hostname()
+    ip = get_ip_address()
+    version = get_franklin_version()
+    os_version = get_os_version()
 
-    # Build the banner content
-    lines = []
+    disk_bar, disk_pct, disk_used, disk_total = get_disk_stats()
+    mem_used, mem_total = get_memory_stats()
 
-    # Adaptive layout based on width
-    if width >= 60:
-        # Wide layout: horizontal
-        lines.append(f"Hostname: {stats['hostname']}")
-        lines.append(f"IP Address: {stats['ip_address']}")
-        lines.append(f"Franklin: v{stats['franklin_version']}")
-        lines.append("")
-        lines.append(f"OS: {stats['os']}")
-        lines.append(f"Memory: {stats['memory']}")
-    else:
-        # Narrow layout: more compact
-        lines.append(f"{stats['hostname']}")
-        lines.append(f"{stats['ip_address']}")
-        lines.append(f"Franklin v{stats['franklin_version']}")
-        lines.append("")
-        lines.append(f"{stats['os']}")
-        lines.append(f"Mem: {stats['memory']}")
+    containers = get_docker_containers()
+    services = get_system_services()
 
-    # Create the panel with borders
-    banner = Text("\n".join(lines), style=color, justify="center")
+    # Build output
+    hr = "─" * width
 
-    panel = Panel(
-        Align.center(banner),
-        border_style=color,
-        width=width,
-        padding=(1, 2),
-    )
+    # Header line
+    header = f" > {hostname} ({ip})"
+    version_text = f"🐢 {version}"
+    padding = width - len(header) - len(version_text)
+    header_line = f"{header}{' ' * padding}{version_text}"
 
-    console.print(panel)
+    # Stats line
+    stats_line = f"  {disk_bar} {disk_pct:.0f}% {disk_used}/{disk_total}"
+    stats_line += f"{'':15}RAM {mem_used}/{mem_total}"
+    stats_line += f"{' ' * (width - len(stats_line) - len(os_version))}{os_version}"
+
+    # Print with color
+    console.print(hr, style=color)
+    console.print(header_line, style=color)
+    console.print(hr, style=color)
+    console.print(stats_line, style=color)
+    console.print(" " + hr, style=color)
+
+    # Docker containers
+    if containers:
+        console.print(" Docker Containers:", style=color)
+        for line in format_grid(containers, width):
+            console.print(line, style=color)
+        console.print()
+
+    # Services
+    if services:
+        console.print(" Services:", style=color)
+        for line in format_grid(services, width):
+            console.print(line, style=color)
+        console.print()
 
 
 if __name__ == "__main__":
