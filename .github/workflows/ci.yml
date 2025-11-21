@@ -1,0 +1,41 @@
+name: CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  smoke:
+    name: CLI smokes (macOS + Ubuntu)
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: |
+          python -m venv .venv
+          source .venv/bin/activate
+          pip install -r franklin/requirements.txt
+
+      - name: CLI smokes
+        run: |
+          source .venv/bin/activate
+          export FRANKLIN_ROOT=$PWD
+          export PYTHONPATH=franklin/src
+          export PYTHONPYCACHEPREFIX=/tmp
+          python -m lib.main --help >/dev/null
+          python -m lib.main doctor --json
+          python -m lib.main update --dry-run
+          python -m lib.main update-all --dry-run
+          python -m lib.main update-all --dry-run --system

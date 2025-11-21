@@ -9,6 +9,7 @@ Implements the "Campfire" UX Standards:
 - Stream separation (stderr for UI, stdout for data)
 """
 
+import os
 import sys
 from typing import Optional
 from rich.console import Console
@@ -37,17 +38,36 @@ class CampfireUI:
     Colors and animations are automatically disabled when not in a TTY.
     """
 
-    def __init__(self):
+    def __init__(self, no_color: Optional[bool] = None):
         """Initialize the Campfire UI with stderr console."""
-        # All UI output goes to stderr (Rule of Silence)
-        self.console = Console(file=sys.stderr, force_terminal=None)
-        self.is_tty = sys.stderr.isatty()
+        env_no_color = (
+            os.environ.get("NO_COLOR") is not None
+            or os.environ.get("FRANKLIN_NO_COLOR") is not None
+        )
+        # allow explicit override for tests or CLI flag
+        self.no_color = env_no_color if no_color is None else no_color
+        self._init_console()
 
         # Define styles
         self.style_error = Style(color=UI_ERROR_COLOR)
         self.style_success = Style(color=UI_SUCCESS_COLOR)
         self.style_info = Style(color=UI_INFO_COLOR)
         self.style_warning = Style(color=UI_WARNING_COLOR)
+
+    def _init_console(self) -> None:
+        """(Re)initialize the console based on current color settings."""
+        self.console = Console(
+            file=sys.stderr,
+            force_terminal=None,
+            no_color=self.no_color,
+        )
+        # Rich already handles TTY detection; also respect explicit no_color
+        self.is_tty = self.console.is_terminal and not self.no_color
+
+    def set_color(self, enable: bool) -> None:
+        """Toggle colored output at runtime (e.g., from CLI flag)."""
+        self.no_color = not enable
+        self._init_console()
 
     def print_header(self, text: str, style: Optional[str] = None) -> None:
         """
