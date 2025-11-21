@@ -47,6 +47,41 @@ app = typer.Typer(
 console = Console(no_color=_resolve_no_color(False))
 
 
+def _ensure_first_run_color(ctx: "typer.Context") -> None:
+    """Prompt for MOTD color on first run when interactive."""
+    # Skip if already configured or not a TTY
+    if CONFIG_FILE.exists() or not sys.stderr.isatty():
+        return
+
+    # Avoid prompting when user explicitly runs config
+    if ctx.invoked_subcommand == "config":
+        return
+
+    ui.print_header("Franklin Configuration (first run)")
+    ui.print_branch("Select a MOTD color (default shown below):")
+    console.print()
+    for name, colors in CAMPFIRE_COLORS.items():
+        base_color = colors["base"]
+        console.print(f"  [bold {base_color}]████[/bold {base_color}]  {name:<15} ({base_color})")
+
+    color_choice = Prompt.ask(
+        "\nSelect a color name",
+        default=DEFAULT_CAMPFIRE_COLOR,
+    )
+
+    if color_choice not in CAMPFIRE_COLORS:
+        ui.print_warning(f"Invalid color: {color_choice}, using default {DEFAULT_CAMPFIRE_COLOR}")
+        color_choice = DEFAULT_CAMPFIRE_COLOR
+
+    hex_color = CAMPFIRE_COLORS[color_choice]["base"]
+    CONFIG_DIR.mkdir(parents=True, exist_ok=True)
+    with open(CONFIG_FILE, "w") as f:
+        f.write(f'MOTD_COLOR_NAME="{color_choice}"\n')
+        f.write(f'MOTD_COLOR="{hex_color}"\n')
+
+    ui.print_success(f"MOTD color set to {color_choice} ({hex_color})")
+
+
 def _detect_os_family() -> str:
     """Detect OS family for package manager selection."""
     system = platform.system()
@@ -136,6 +171,7 @@ def version_callback(value: bool):
 
 @app.callback()
 def main_callback(
+    ctx: typer.Context,
     version: Annotated[
         bool,
         typer.Option(
@@ -162,6 +198,7 @@ def main_callback(
     global console
     ui.set_color(not effective_no_color)
     console = Console(no_color=effective_no_color)
+    _ensure_first_run_color(ctx)
 
 
 @app.command()
