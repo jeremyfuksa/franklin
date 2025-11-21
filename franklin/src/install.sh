@@ -218,9 +218,20 @@ ui_header "Installing dependencies"
 
 case "$OS_FAMILY" in
     macos)
-        # Check for Homebrew
+        # Check for Homebrew and add to PATH if needed
         if ! command -v brew >/dev/null 2>&1; then
-            ui_error "Homebrew is required on macOS but not found. Please install it first: https://brew.sh"
+            # Check common Homebrew locations
+            if [ -x "/opt/homebrew/bin/brew" ]; then
+                # Apple Silicon
+                export PATH="/opt/homebrew/bin:$PATH"
+                ui_branch "Found Homebrew at /opt/homebrew/bin"
+            elif [ -x "/usr/local/bin/brew" ]; then
+                # Intel Mac
+                export PATH="/usr/local/bin:$PATH"
+                ui_branch "Found Homebrew at /usr/local/bin"
+            else
+                ui_error "Homebrew is required on macOS but not found. Please install it first: https://brew.sh"
+            fi
         fi
 
         # Install dependencies
