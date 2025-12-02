@@ -20,7 +20,11 @@ curl -fsSL https://raw.githubusercontent.com/jeremyfuksa/franklin/main/franklin/
   | bash -s -- --dir "${HOME}/.local/share/franklin" --ref v2.0.0-beta-1
 ```
 
-That's it—Franklin downloads his shell and gently asks about your preferred color palette along the way. Need automation? Use the flags below.
+That's it—Franklin downloads his shell and gently asks about your preferred color palette along the way.
+
+![Franklin MOTD](images/screenshot.png)
+
+Need automation? Use the flags below.
 
 | Layer | Flag | Description |
 | --- | --- | --- |
@@ -63,12 +67,50 @@ Everything lives under your install dir (default `~/.local/share/franklin`) with
 
 ## Customization
 
-- **Banner color**: on first interactive run you’ll be prompted; change anytime via `franklin config --color <name|#hex>` or edit `~/.config/franklin/config.env`. Signature names: `clay`, `flamingo`, `terracotta`, `ember`, `golden-amber`, `hay`, `sage`, `moss`, `pine`, `cello`, `blue-calx`, `dusk`, `mauve-earth`, `stone`.
-- **Prompt/plugins**: edit `starship.toml` or drop additional scripts in `~/.config/franklin/` and source them from `.zshrc`.
-- **Local overrides**: customize Franklin without touching the managed `.zshrc` by editing `~/.franklin.local.zsh`. The installer auto-creates this file with commented examples for common options (MOTD flags, update defaults, backup directory, NVM/Node `PATH`, and custom aliases); uncomment and tweak the lines you need. Set `FRANKLIN_LOCAL_CONFIG` to point at a different file if you want to relocate your overrides.
-- **MOTD services**: Docker containers are detected automatically; add `MONITORED_SERVICES="nginx,postgresql,redis"` (comma-separated) to `~/.config/franklin/config.env` to track additional systemd/launchd services in the dashboard.
-- **Backups**: set `FRANKLIN_BACKUP_DIR=/path/to/dir` before installing if you want backups elsewhere.
-- **Streaming defaults**: create `~/.config/franklin/update.env` with `FRANKLIN_UPDATE_MODE=quiet` (or `auto`/`verbose`) and `FRANKLIN_UPDATE_TIMEOUT=600` to set your preferred `update-all.sh` mode globally.
+Franklin is designed to be customized. Here’s how you can make it your own.
+
+### Shell Customization
+
+The best way to add your own aliases, functions, and `PATH` adjustments is by editing `~/.franklin.local.zsh`. This file is loaded by Franklin's `.zshrc` but isn't managed by Franklin itself, so your changes won't be overwritten during updates.
+
+The installer creates this file for you with some common examples to get you started.
+
+To add custom shell plugins, edit `~/.config/sheldon/plugins.toml` and then run `sheldon lock`.
+
+### Prompt
+
+The prompt is powered by [Starship](https://starship.rs/). You can customize it by editing `~/.config/starship.toml`.
+
+### Banner & MOTD
+
+![Franklin Color Config](images/color-config.png)
+
+- **Banner Color**: Change the color of the Franklin banner with `franklin config --color <name|#hex>`. You can also edit `~/.config/franklin/config.env` directly. Franklin's signature colors are `clay`, `flamingo`, `terracotta`, `ember`, `golden-amber`, `hay`, `sage`, `moss`, `pine`, `cello`, `blue-calx`, `dusk`, `mauve-earth`, and `stone`.
+
+- **MOTD Services**: To monitor `systemd` or `launchd` services in the MOTD dashboard, add their names to the `MONITORED_SERVICES` variable in `~/.config/franklin/config.env`. Docker containers are detected automatically.
+  ```env
+  # ~/.config/franklin/config.env
+  MONITORED_SERVICES="nginx,postgresql,redis"
+  ```
+
+- **Disable MOTD**: To prevent the MOTD from showing on login, set `FRANKLIN_SHOW_MOTD_ON_LOGIN=0` in `~/.franklin.local.zsh`.
+
+### Advanced Configuration
+
+- **Update Behavior**: Control the default mode for `update-all.sh` by creating `~/.config/franklin/update.env`.
+  ```env
+  # ~/.config/franklin/update.env
+  FRANKLIN_UPDATE_MODE=quiet # quiet, auto, or verbose
+  FRANKLIN_UPDATE_TIMEOUT=600
+  ```
+
+- **Backup Location**: To change where Franklin stores backups of your old dotfiles, set the `FRANKLIN_BACKUP_DIR` environment variable *before* running the installer.
+  ```bash
+  export FRANKLIN_BACKUP_DIR=/path/to/your/backups
+  # ... then run the installer
+  ```
+
+- **Local Overrides File**: If you want to store your local overrides in a different location than `~/.franklin.local.zsh`, set the `FRANKLIN_LOCAL_CONFIG` environment variable in your `.zshenv` file.
 
 ## Troubleshooting
 
