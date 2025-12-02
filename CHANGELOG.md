@@ -17,6 +17,7 @@ and the project aims to follow [Semantic Versioning](https://semver.org/).
 
 - Node.js and npm now work correctly in non-interactive shells, subprocesses, and when invoked by AI agents or automation tools.
 - Commands like `bash -c "npm install"` no longer fail due to undefined wrapper functions.
+- **Debian/Ubuntu installation:** Fixed incorrect package name `batcat` → `bat` in apt-get command. The package is named `bat` (executable is `batcat` for conflict avoidance, which the zshrc template already handles via aliases).
 - **CRITICAL:** Fixed misleading MOTD services documentation that caused user confusion:
   - Corrected variable name: `MOTD_SERVICES` → `MONITORED_SERVICES` throughout README and CHANGELOG
   - Updated `.franklin.local.zsh` template to clearly explain services MUST be in `~/.config/franklin/config.env`, NOT in the local overrides file

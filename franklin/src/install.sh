@@ -235,7 +235,7 @@ case "$OS_FAMILY" in
             ui_error_noexit "apt-get update failed"
             INSTALL_FAILED=true
         fi
-        if ! sudo apt-get install -y -qq curl git zsh python3 python3-venv python3-pip batcat 2>&1 | sed 's/^/      /' >&2; then
+        if ! sudo apt-get install -y -qq curl git zsh python3 python3-venv python3-pip bat 2>&1 | sed 's/^/      /' >&2; then
             ui_error_noexit "Some apt packages failed to install"
             INSTALL_FAILED=true
         fi
