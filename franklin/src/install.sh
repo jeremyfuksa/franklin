@@ -363,8 +363,8 @@ if [ ! -f "$LOCAL_CONFIG_PATH" ]; then
 # export FRANKLIN_ENABLE_MOTD=1
 # export FRANKLIN_SHOW_MOTD_ON_LOGIN=1
 
-# Track additional services in the MOTD dashboard (space-separated list):
-# export MOTD_SERVICES="nginx postgresql redis"
+# Track additional services in the MOTD dashboard:
+# Add to ~/.config/franklin/config.env instead (see MONITORED_SERVICES above)
 
 # Updates
 # -------
@@ -419,14 +419,3 @@ echo "  2. Restart your shell or run: exec zsh" >&2
 echo "" >&2
 echo "  3. Verify installation with: franklin doctor" >&2
 echo "" >&2
-
-# Debian / NVM note
-if [ "$OS_FAMILY" = "debian" ]; then
-    echo "Note for NVM users on Debian/Ubuntu:" >&2
-    echo "  If you installed Node via NVM and do not have a 'default' alias configured," >&2
-    echo "  Franklin may not put your NVM Node bin directory on PATH immediately after install." >&2
-    echo "  To fix this, run:" >&2
-    echo "    nvm alias default 'lts/*'" >&2
-    echo "  or add your desired NVM Node bin directory to PATH in ~/.franklin.local.zsh." >&2
-    echo "" >&2
-fi

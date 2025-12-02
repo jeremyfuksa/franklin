@@ -7,6 +7,11 @@ and the project aims to follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Fixed
+
+- Corrected documentation inconsistency: `MOTD_SERVICES` → `MONITORED_SERVICES` in README and CHANGELOG (the code always used `MONITORED_SERVICES` in `~/.config/franklin/config.env`).
+- Removed outdated Debian/NVM PATH warning from installer (issue was fixed in 2.0.1/2.0.2 with NVM PATH fallback logic and eager loading).
+
 ## [2.0.2] - 2025-12-02
 
 ### Changed
@@ -189,7 +194,7 @@ This release completes **Phase 0 critical fixes** identified in architectural re
 - `update-all.sh` now self-updates Franklin (git pull or release tarball) so the core files stay in sync before other maintenance steps run.
 - Added Python runtime and uv maintenance steps to `update-all.sh` so Homebrew/apt/dnf installs stay current alongside Node/npm.
 - `.zshrc` now sources `~/.franklin.local.zsh` (or `FRANKLIN_LOCAL_CONFIG`) so you can keep private aliases outside the repo; the installer creates the stub automatically.
-- MOTD automatically shows a Docker/services grid when containers are present or `MOTD_SERVICES` defines custom daemons to monitor.
+- MOTD automatically shows a Docker/services grid when containers are present or `MONITORED_SERVICES` defines custom daemons to monitor.
 
 ### Changed
 
