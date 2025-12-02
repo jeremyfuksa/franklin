@@ -7,7 +7,28 @@ and the project aims to follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
-_Nothing yet._
+## [2.0.1] - 2025-12-02
+
+### Added
+
+- `.franklin.local.zsh` stub now includes commented examples for common options (MOTD flags, update defaults, backup directory, NVM/Node PATH, and custom aliases) so you can customize by uncommenting lines instead of consulting the docs.
+- Shared Bash UI library (`franklin/src/lib/ui.sh`) for consistent Campfire styling across shell scripts.
+- Comprehensive test suite (`test/test_cli.py`) with 20 pytest smoke tests covering CLI commands, OS detection, UI, constants, and MOTD modules.
+
+### Changed
+
+- Zsh template now respects `FRANKLIN_LOCAL_CONFIG` when loading local overrides, allowing you to relocate the overrides file.
+- Installer (`install.sh`) refactored to use shared UI library and added `--non-interactive` and `--color` flags for automation.
+- Bootstrap script (`bootstrap.sh`) streamlined with minimal UI functions (full library loads after installation).
+- OS family detection now returns `fedora` instead of `rhel` for consistency with install script naming conventions (affects all RHEL-family distros: Fedora, RHEL, CentOS, Rocky, Alma).
+
+### Fixed
+
+- Debian/Linux installs that use NVM no longer drop the active Node version from `PATH` when no `default` alias is configured; Franklin now falls back to the only installed NVM Node version when appropriate.
+
+### Documentation
+
+- Installer prints a Debian/NVM note describing how to restore NVM Node and global `npm` tools on `PATH` if needed.
 
 ## [2.0.0] - 2025-11-21
 

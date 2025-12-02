@@ -109,7 +109,14 @@ def _ensure_first_run_color(ctx: "typer.Context") -> None:
 
 
 def _detect_os_family() -> str:
-    """Detect OS family for package manager selection."""
+    """Detect OS family for package manager selection.
+    
+    Returns:
+        'macos', 'debian', 'fedora', or 'unknown'
+    
+    Note: Uses 'fedora' for all RHEL-family distros (Fedora, RHEL, CentOS, Rocky, Alma)
+    to match install.sh naming convention.
+    """
     system = platform.system()
     if system == "Darwin":
         return "macos"
@@ -117,11 +124,11 @@ def _detect_os_family() -> str:
     if shutil.which("apt-get"):
         return "debian"
     if shutil.which("dnf") or shutil.which("yum"):
-        return "rhel"
+        return "fedora"
     if Path("/etc/debian_version").exists():
         return "debian"
     if Path("/etc/redhat-release").exists():
-        return "rhel"
+        return "fedora"
     return "unknown"
 
 
@@ -179,7 +186,7 @@ def _update_system_packages(os_family: str, dry_run: bool) -> bool:
         ok_upgrade, _ = _run_logged(upgrade_cmd, dry_run=dry_run)
         return ok_update and ok_upgrade
 
-    if os_family == "rhel":
+    if os_family == "fedora":
         ui.print_branch("Using dnf")
         ok_update, _ = _run_logged(["sudo", "dnf", "makecache"], dry_run=dry_run)
         upgrade_cmd = ["sudo", "dnf", "upgrade", "-y"]

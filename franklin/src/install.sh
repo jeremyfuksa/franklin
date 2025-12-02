@@ -11,6 +11,10 @@
 # 5. Sets up Sheldon, Starship, and NVM
 # 6. Symlinks ~/.zshrc to the Franklin template
 # 7. Installs the Franklin CLI via Python
+#
+# Flags:
+#   --non-interactive   Skip interactive prompts (use defaults)
+#   --color NAME        Pre-select MOTD color (e.g., Cello, Terracotta)
 
 set -euo pipefail
 
@@ -21,89 +25,30 @@ CONFIG_DIR="${HOME}/.config/franklin"
 CONFIG_FILE="${CONFIG_DIR}/config.env"
 VENV_DIR="${HOME}/.local/share/franklin/venv"
 
-# --- Campfire UI Functions (Bash) ---
-# Mirror the Python Campfire UI library for consistent visual hierarchy
-# All output goes to stderr to preserve stdout for machine-readable data
+# --- Parse Arguments ---
+NON_INTERACTIVE=false
+PRESET_COLOR=""
 
-# Glyphs
-GLYPH_ACTION="⏺"
-GLYPH_BRANCH="⎿"
-GLYPH_LOGIC="∴"
-GLYPH_WAIT="✻"
-GLYPH_SUCCESS="✔"
-GLYPH_WARNING="⚠"
-GLYPH_ERROR="✗"
+while [ $# -gt 0 ]; do
+    case "$1" in
+        --non-interactive|-y)
+            NON_INTERACTIVE=true
+            shift
+            ;;
+        --color)
+            PRESET_COLOR="$2"
+            shift 2
+            ;;
+        *)
+            echo "ERROR: Unknown argument: $1" >&2
+            echo "Usage: install.sh [--non-interactive] [--color NAME]" >&2
+            exit 1
+            ;;
+    esac
+done
 
-# Colors (ANSI)
-COLOR_ERROR="\033[38;2;191;97;106m"    # #bf616a
-COLOR_SUCCESS="\033[38;2;163;190;140m"  # #a3be8c
-COLOR_INFO="\033[38;2;136;192;208m"     # #88c0d0
-COLOR_WARNING="\033[38;2;235;203;139m"  # #ebcb8b
-COLOR_RESET="\033[0m"
-
-# Check if we're in a TTY for color support
-if [ -t 2 ]; then
-    USE_COLOR=true
-else
-    USE_COLOR=false
-fi
-
-ui_header() {
-    # ⏺ text
-    echo "${GLYPH_ACTION} $*" >&2
-}
-
-ui_branch() {
-    # ⎿  text (2-space indent to align under parent glyph)
-    echo "${GLYPH_BRANCH}  $*" >&2
-}
-
-ui_logic() {
-    # ∴ text
-    echo "${GLYPH_LOGIC} $*" >&2
-}
-
-ui_section_end() {
-    # Blank line for breathing room between sections
-    echo "" >&2
-}
-
-ui_error() {
-    # ⎿  ✗ text (in red, then exit)
-    if [ "$USE_COLOR" = true ]; then
-        echo -e "${GLYPH_BRANCH}  ${COLOR_ERROR}${GLYPH_ERROR} $*${COLOR_RESET}" >&2
-    else
-        echo "${GLYPH_BRANCH}  ${GLYPH_ERROR} $*" >&2
-    fi
-    exit 1
-}
-
-ui_success() {
-    # ⎿  ✔ text (in green)
-    if [ "$USE_COLOR" = true ]; then
-        echo -e "${GLYPH_BRANCH}  ${COLOR_SUCCESS}${GLYPH_SUCCESS} $*${COLOR_RESET}" >&2
-    else
-        echo "${GLYPH_BRANCH}  ${GLYPH_SUCCESS} $*" >&2
-    fi
-}
-
-ui_warning() {
-    # ⎿  ⚠ text (in yellow)
-    if [ "$USE_COLOR" = true ]; then
-        echo -e "${GLYPH_BRANCH}  ${COLOR_WARNING}${GLYPH_WARNING} $*${COLOR_RESET}" >&2
-    else
-        echo "${GLYPH_BRANCH}  ${GLYPH_WARNING} $*" >&2
-    fi
-}
-
-ui_final_success() {
-    # ✔ text (standalone, no branch, in green)
-    if [ "$USE_COLOR" = true ]; then
-        echo -e "${COLOR_SUCCESS}${GLYPH_SUCCESS} $*${COLOR_RESET}" >&2
-    else
-        echo "${GLYPH_SUCCESS} $*" >&2
-    fi
-}
+# --- Source shared UI library ---
+source "${FRANKLIN_ROOT}/src/lib/ui.sh"
 
 # --- Platform Detection ---
 ui_header "Detecting platform"
@@ -162,26 +107,6 @@ done
 ui_success "Backup complete"
 ui_section_end
 
-# --- Color Display Helper ---
-# Convert hex color to ANSI 24-bit color code and display a colored swatch
-show_color() {
-    local name="$1"
-    local hex="$2"
-
-    # Strip # from hex
-    hex="${hex#\#}"
-
-    # Convert hex to RGB
-    local r=$((16#${hex:0:2}))
-    local g=$((16#${hex:2:2}))
-    local b=$((16#${hex:4:2}))
-
-    # ANSI 24-bit color: \033[38;2;R;G;Bm for foreground
-    # Use echo -e to ensure escape sequences are interpreted
-    # Display colored block characters as preview
-    echo -e "  \033[38;2;${r};${g};${b}m████\033[0m  $(printf '%-15s' "$name") (#${hex})" >&2
-}
-
 # --- Campfire Color Selection ---
 ui_header "Configuring MOTD color"
 
@@ -189,8 +114,32 @@ ui_header "Configuring MOTD color"
 MOTD_COLOR="#607a97"  # Cello
 MOTD_COLOR_NAME="Cello"
 
-# Interactive mode if TTY
-if [ -t 0 ]; then
+# Color lookup table
+declare -A COLOR_MAP=(
+    ["Cello"]="#607a97"
+    ["Terracotta"]="#b87b6a"
+    ["Black Rock"]="#747b8a"
+    ["Sage"]="#8fb14b"
+    ["Golden Amber"]="#f9c574"
+    ["Flamingo"]="#e75351"
+    ["Blue Calx"]="#b8c5d9"
+)
+
+# Handle preset color from --color flag
+if [ -n "$PRESET_COLOR" ]; then
+    if [ -n "${COLOR_MAP[$PRESET_COLOR]:-}" ]; then
+        MOTD_COLOR="${COLOR_MAP[$PRESET_COLOR]}"
+        MOTD_COLOR_NAME="$PRESET_COLOR"
+        ui_success "Using preset color: $MOTD_COLOR_NAME ($MOTD_COLOR)"
+    elif [[ "$PRESET_COLOR" =~ ^#[0-9A-Fa-f]{6}$ ]]; then
+        MOTD_COLOR="$PRESET_COLOR"
+        MOTD_COLOR_NAME="custom"
+        ui_success "Using custom color: $MOTD_COLOR"
+    else
+        ui_warning "Invalid color '$PRESET_COLOR', using default (Cello)"
+    fi
+# Interactive mode if TTY and not --non-interactive
+elif [ -t 0 ] && [ "$NON_INTERACTIVE" = false ]; then
     echo "" >&2
     echo "Select your Campfire color for the MOTD banner:" >&2
     echo "" >&2
@@ -228,6 +177,8 @@ if [ -t 0 ]; then
             ui_warning "Invalid choice, using default (Cello)"
             ;;
     esac
+else
+    ui_branch "Non-interactive mode, using default color (Cello)"
 fi
 
 # Save color to config
@@ -250,6 +201,8 @@ ui_section_end
 # --- Install Dependencies ---
 ui_header "Installing dependencies"
 
+INSTALL_FAILED=false
+
 case "$OS_FAMILY" in
     macos)
         # Check for Homebrew and add to PATH if needed
@@ -270,44 +223,72 @@ case "$OS_FAMILY" in
 
         # Install dependencies
         ui_branch "Installing packages via Homebrew..."
-        brew install curl git zsh python3 bat sheldon starship 2>&1 | sed 's/^/  /' >&2 || true
+        if ! brew install curl git zsh python3 bat sheldon starship 2>&1 | sed 's/^/      /' >&2; then
+            ui_error_noexit "Some Homebrew packages failed to install"
+            INSTALL_FAILED=true
+        fi
         ;;
 
     debian)
         ui_branch "Installing packages via apt..."
-        sudo apt-get update -qq 2>&1 | sed 's/^/  /' >&2
-        sudo apt-get install -y -qq curl git zsh python3 python3-venv python3-pip batcat 2>&1 | sed 's/^/  /' >&2 || true
+        if ! sudo apt-get update -qq 2>&1 | sed 's/^/      /' >&2; then
+            ui_error_noexit "apt-get update failed"
+            INSTALL_FAILED=true
+        fi
+        if ! sudo apt-get install -y -qq curl git zsh python3 python3-venv python3-pip batcat 2>&1 | sed 's/^/      /' >&2; then
+            ui_error_noexit "Some apt packages failed to install"
+            INSTALL_FAILED=true
+        fi
 
         # Install Sheldon (not in apt)
         if ! command -v sheldon >/dev/null 2>&1; then
             ui_branch "Installing Sheldon..."
-            curl --proto '=https' -fLsS https://rossmacarthur.github.io/install/crate.sh | bash -s -- --repo rossmacarthur/sheldon --to ~/.local/bin 2>&1 | sed 's/^/  /' >&2
+            if ! curl --proto '=https' -fLsS https://rossmacarthur.github.io/install/crate.sh | bash -s -- --repo rossmacarthur/sheldon --to ~/.local/bin 2>&1 | sed 's/^/      /' >&2; then
+                ui_error_noexit "Sheldon installation failed"
+                INSTALL_FAILED=true
+            fi
         fi
 
         # Install Starship (not in apt)
         if ! command -v starship >/dev/null 2>&1; then
             ui_branch "Installing Starship..."
-            curl -fsSL https://starship.rs/install.sh | sh -s -- --yes 2>&1 | sed 's/^/  /' >&2
+            if ! curl -fsSL https://starship.rs/install.sh | sh -s -- --yes 2>&1 | sed 's/^/      /' >&2; then
+                ui_error_noexit "Starship installation failed"
+                INSTALL_FAILED=true
+            fi
         fi
         ;;
 
     fedora)
         ui_branch "Installing packages via dnf..."
-        sudo dnf install -y curl git zsh python3 python3-pip bat 2>&1 | sed 's/^/  /' >&2 || true
+        if ! sudo dnf install -y curl git zsh python3 python3-pip bat 2>&1 | sed 's/^/      /' >&2; then
+            ui_error_noexit "Some dnf packages failed to install"
+            INSTALL_FAILED=true
+        fi
 
         # Install Sheldon (not in dnf)
         if ! command -v sheldon >/dev/null 2>&1; then
             ui_branch "Installing Sheldon..."
-            curl --proto '=https' -fLsS https://rossmacarthur.github.io/install/crate.sh | bash -s -- --repo rossmacarthur/sheldon --to ~/.local/bin 2>&1 | sed 's/^/  /' >&2
+            if ! curl --proto '=https' -fLsS https://rossmacarthur.github.io/install/crate.sh | bash -s -- --repo rossmacarthur/sheldon --to ~/.local/bin 2>&1 | sed 's/^/      /' >&2; then
+                ui_error_noexit "Sheldon installation failed"
+                INSTALL_FAILED=true
+            fi
         fi
 
         # Install Starship (not in dnf)
         if ! command -v starship >/dev/null 2>&1; then
             ui_branch "Installing Starship..."
-            curl -fsSL https://starship.rs/install.sh | sh -s -- --yes 2>&1 | sed 's/^/  /' >&2
+            if ! curl -fsSL https://starship.rs/install.sh | sh -s -- --yes 2>&1 | sed 's/^/      /' >&2; then
+                ui_error_noexit "Starship installation failed"
+                INSTALL_FAILED=true
+            fi
         fi
         ;;
 esac
+
+if [ "$INSTALL_FAILED" = true ]; then
+    ui_warning "Some dependencies failed to install. Continuing with available tools..."
+fi
 
 ui_success "Dependencies installed"
 ui_section_end
@@ -360,6 +341,52 @@ fi
 ln -sf "$ZSHRC_TARGET" "$ZSHRC_LINK"
 ui_success ".zshrc linked to Franklin template"
 
+# Create local overrides stub if it does not exist
+LOCAL_CONFIG_PATH="${FRANKLIN_LOCAL_CONFIG:-${HOME}/.franklin.local.zsh}"
+if [ ! -f "$LOCAL_CONFIG_PATH" ]; then
+    ui_branch "Creating local overrides config at $LOCAL_CONFIG_PATH"
+    cat > "$LOCAL_CONFIG_PATH" <<'EOF'
+# Franklin local overrides
+# ------------------------
+# This file is sourced at the end of Franklin's .zshrc to let you customize
+# your shell without touching the managed template.
+
+# PATH / Node / npm
+# -----------------
+# Example: pin a specific NVM-managed Node version on PATH at login.
+# Uncomment and adjust the version to match your system:
+# export PATH="$HOME/.nvm/versions/node/v18.18.0/bin:$PATH"
+
+# MOTD (Message of the Day)
+# -------------------------
+# Enable/disable the Franklin MOTD banner on login:
+# export FRANKLIN_ENABLE_MOTD=1
+# export FRANKLIN_SHOW_MOTD_ON_LOGIN=1
+
+# Track additional services in the MOTD dashboard (space-separated list):
+# export MOTD_SERVICES="nginx postgresql redis"
+
+# Updates
+# -------
+# Control the default mode and timeout for update-all.sh:
+# export FRANKLIN_UPDATE_MODE="auto"   # quiet | auto | verbose
+# export FRANKLIN_UPDATE_TIMEOUT=600   # seconds
+
+# Backups
+# -------
+# Override where Franklin stores configuration backups:
+# export FRANKLIN_BACKUP_DIR="$HOME/.local/share/franklin/backups"
+
+# Custom aliases and functions
+# ----------------------------
+# Put any aliases or functions you want to keep private below.
+# Example:
+# alias gs="git status -sb"
+EOF
+else
+    ui_branch "Local overrides config already exists at $LOCAL_CONFIG_PATH"
+fi
+
 # Link Sheldon config
 SHELDON_CONFIG_DIR="${HOME}/.config/sheldon"
 mkdir -p "$SHELDON_CONFIG_DIR"
@@ -385,10 +412,21 @@ ui_section_end
 ui_final_success "Franklin installation complete!"
 echo "" >&2
 echo "Next steps:" >&2
-echo "  1. Add Franklin to your PATH by adding this to your .zshrc:" >&2
+echo "  1. Add Franklin to your PATH by adding this to your .zshrc (optional if you're using the Franklin .zshrc template):" >&2
 echo "     export PATH=\"${VENV_DIR}/bin:\$PATH\"" >&2
 echo "" >&2
 echo "  2. Restart your shell or run: exec zsh" >&2
 echo "" >&2
 echo "  3. Verify installation with: franklin doctor" >&2
 echo "" >&2
+
+# Debian / NVM note
+if [ "$OS_FAMILY" = "debian" ]; then
+    echo "Note for NVM users on Debian/Ubuntu:" >&2
+    echo "  If you installed Node via NVM and do not have a 'default' alias configured," >&2
+    echo "  Franklin may not put your NVM Node bin directory on PATH immediately after install." >&2
+    echo "  To fix this, run:" >&2
+    echo "    nvm alias default 'lts/*'" >&2
+    echo "  or add your desired NVM Node bin directory to PATH in ~/.franklin.local.zsh." >&2
+    echo "" >&2
+fi

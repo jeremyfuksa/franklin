@@ -37,68 +37,31 @@ while [ $# -gt 0 ]; do
     esac
 done
 
-# --- Campfire UI Functions (Bash) ---
-# Mirror the Python Campfire UI library for consistent visual hierarchy
+# --- Minimal UI Functions (Bash) ---
+# NOTE: This is intentionally duplicated from lib/ui.sh because bootstrap runs
+# BEFORE the library is downloaded. Keep this minimal - just what bootstrap needs.
 
-# Glyphs
-GLYPH_ACTION="⏺"
-GLYPH_BRANCH="⎿"
-GLYPH_LOGIC="∴"
-GLYPH_SUCCESS="✔"
-GLYPH_ERROR="✗"
+_UI_USE_COLOR=false
+[ -t 2 ] && [ -z "${NO_COLOR:-}" ] && _UI_USE_COLOR=true
 
-# Colors (ANSI)
-COLOR_ERROR="\033[38;2;191;97;106m"    # #bf616a
-COLOR_SUCCESS="\033[38;2;163;190;140m"  # #a3be8c
-COLOR_RESET="\033[0m"
-
-# Check if we're in a TTY for color support
-if [ -t 2 ]; then
-    USE_COLOR=true
-else
-    USE_COLOR=false
-fi
-
-ui_header() {
-    # ⏺ text
-    printf "%s %s\n" "${GLYPH_ACTION}" "$*" >&2
-}
-
-ui_branch() {
-    # ⎿  text (2-space indent)
-    printf "%s  %s\n" "${GLYPH_BRANCH}" "$*" >&2
-}
-
-ui_section_end() {
-    # Blank line for breathing room between sections
-    printf "\n" >&2
-}
+ui_header()  { printf "⏺ %s\n" "$*" >&2; }
+ui_branch()  { printf "⎿  %s\n" "$*" >&2; }
+ui_section_end() { printf "\n" >&2; }
 
 ui_error() {
-    # ⎿  ✗ text (in red, then exit)
-    if [ "$USE_COLOR" = true ]; then
-        printf "%s  %b%s %s%b\n" "${GLYPH_BRANCH}" "${COLOR_ERROR}" "${GLYPH_ERROR}" "$*" "${COLOR_RESET}" >&2
+    if [ "$_UI_USE_COLOR" = true ]; then
+        printf "⎿  \033[38;2;191;97;106m✗ %s\033[0m\n" "$*" >&2
     else
-        printf "%s  %s %s\n" "${GLYPH_BRANCH}" "${GLYPH_ERROR}" "$*" >&2
+        printf "⎿  ✗ %s\n" "$*" >&2
     fi
     exit 1
 }
 
 ui_success() {
-    # ⎿  ✔ text (in green)
-    if [ "$USE_COLOR" = true ]; then
-        printf "%s  %b%s %s%b\n" "${GLYPH_BRANCH}" "${COLOR_SUCCESS}" "${GLYPH_SUCCESS}" "$*" "${COLOR_RESET}" >&2
+    if [ "$_UI_USE_COLOR" = true ]; then
+        printf "⎿  \033[38;2;163;190;140m✔ %s\033[0m\n" "$*" >&2
     else
-        printf "%s  %s %s\n" "${GLYPH_BRANCH}" "${GLYPH_SUCCESS}" "$*" >&2
-    fi
-}
-
-ui_final_success() {
-    # ✔ text (standalone, no branch, in green)
-    if [ "$USE_COLOR" = true ]; then
-        printf "%b%s %s%b\n" "${COLOR_SUCCESS}" "${GLYPH_SUCCESS}" "$*" "${COLOR_RESET}" >&2
-    else
-        printf "%s %s\n" "${GLYPH_SUCCESS}" "$*" >&2
+        printf "⎿  ✔ %s\n" "$*" >&2
     fi
 }
 

@@ -66,3 +66,11 @@ test/tmp/
 __pycache__/
 .mypy_cache/
 .pytest_cache/
+
+# Gemini AI Agent (future feature, not in 2.0.x)
+.gemini/
+gha-creds-*.json
+GEMINI.md
+ROADMAP-2.1-issues.md
+.github/commands/
+.github/workflows/gemini-*.yml

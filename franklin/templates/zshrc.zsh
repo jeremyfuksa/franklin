@@ -30,16 +30,56 @@ _franklin_dedupe_path() {
     echo "$deduped_path"
 }
 
+# Resolve the NVM default alias to a concrete Node bin directory without fully loading nvm
+_franklin_nvm_default_bin() {
+    local nvm_dir="${NVM_DIR:-${HOME}/.nvm}"
+    local alias_path="${nvm_dir}/alias/default"
+    local target=""
+    local depth=0
+
+    # Preferred path: explicit default alias (or alias chain) pointing at a vX.Y.Z
+    if [[ -f "$alias_path" ]]; then
+        target="$(<"$alias_path")"
+        while (( depth < 3 )); do
+            if [[ "$target" == v* ]] && [[ -d "${nvm_dir}/versions/node/${target}/bin" ]]; then
+                echo "${nvm_dir}/versions/node/${target}/bin"
+                return
+            fi
+            if [[ -f "${nvm_dir}/alias/${target}" ]]; then
+                target="$(<"${nvm_dir}/alias/${target}")"
+                depth=$((depth + 1))
+                continue
+            fi
+            break
+        done
+    fi
+
+    # Fallback: if there is exactly one Node version installed under ~/.nvm, use it
+    if [[ -d "${nvm_dir}/versions/node" ]]; then
+        local -a bins
+        bins=(${nvm_dir}/versions/node/*/bin(N/))
+        if (( ${#bins[@]} == 1 )); then
+            echo "${bins[1]}"
+            return
+        fi
+    fi
+}
+
 # Build clean PATH with required directories
 _franklin_setup_path() {
     local new_path=""
-    
+
     # Priority directories (checked in order)
     local priority_dirs=(
         "${FRANKLIN_ROOT}/venv/bin"
         "${HOME}/.local/bin"
     )
-    
+
+    local nvm_default_bin="$(_franklin_nvm_default_bin)"
+    if [[ -n "$nvm_default_bin" ]]; then
+        priority_dirs+=("$nvm_default_bin")
+    fi
+
     # Platform-specific directories
     case "$(uname -s)" in
         Darwin)
@@ -214,10 +254,14 @@ fi
 
 # --- Local Overrides ---
 # Load user's local customizations (if present)
-[ -f "${HOME}/.franklin.local.zsh" ] && source "${HOME}/.franklin.local.zsh"
+: "${FRANKLIN_LOCAL_CONFIG:=${HOME}/.franklin.local.zsh}"
+[ -f "$FRANKLIN_LOCAL_CONFIG" ] && source "$FRANKLIN_LOCAL_CONFIG"
 
 # --- MOTD (Message of the Day) ---
 # Display the Campfire banner on new shells (interactive only)
-if [[ -o interactive ]] && command -v franklin >/dev/null 2>&1; then
-    franklin motd
+# Set FRANKLIN_SHOW_MOTD=0 to disable, or FRANKLIN_SHOW_MOTD=1 to force enable
+if [[ -o interactive ]] && [[ "${FRANKLIN_SHOW_MOTD:-1}" != "0" ]]; then
+    if command -v franklin >/dev/null 2>&1; then
+        franklin motd
+    fi
 fi

@@ -65,7 +65,7 @@ Everything lives under your install dir (default `~/.local/share/franklin`) with
 
 - **Banner color**: on first interactive run you’ll be prompted; change anytime via `franklin config --color <name|#hex>` or edit `~/.config/franklin/config.env`. Signature names: `clay`, `flamingo`, `terracotta`, `ember`, `golden-amber`, `hay`, `sage`, `moss`, `pine`, `cello`, `blue-calx`, `dusk`, `mauve-earth`, `stone`.
 - **Prompt/plugins**: edit `starship.toml` or drop additional scripts in `~/.config/franklin/` and source them from `.zshrc`.
-- **Local overrides**: add private aliases/functions to `~/.franklin.local.zsh` (auto-created, sourced after Franklin loads). Set `FRANKLIN_LOCAL_CONFIG` before install to change the path.
+- **Local overrides**: customize Franklin without touching the managed `.zshrc` by editing `~/.franklin.local.zsh`. The installer auto-creates this file with commented examples for common options (MOTD flags, update defaults, backup directory, NVM/Node `PATH`, and custom aliases); uncomment and tweak the lines you need. Set `FRANKLIN_LOCAL_CONFIG` to point at a different file if you want to relocate your overrides.
 - **MOTD services**: Docker containers are detected automatically; set `MOTD_SERVICES=(nginx postgresql redis)` (array or space-separated string) to track additional systemd/launchd services in the dashboard.
 - **Backups**: set `FRANKLIN_BACKUP_DIR=/path/to/dir` before installing if you want backups elsewhere.
 - **Streaming defaults**: create `~/.config/franklin/update.env` with `FRANKLIN_UPDATE_MODE=quiet` (or `auto`/`verbose`) and `FRANKLIN_UPDATE_TIMEOUT=600` to set your preferred `update-all.sh` mode globally.
