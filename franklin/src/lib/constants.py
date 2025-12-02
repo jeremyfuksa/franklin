@@ -17,39 +17,39 @@ BACKUP_DIR = FRANKLIN_ROOT / "backups"
 # Each color has dark and light variants for visual hierarchy
 CAMPFIRE_COLORS = {
     "Cello": {
-        "base": "#607a97",   # H: 210° (blue-gray)
-        "dark": "#4a5f77",   # H: 213° (shifts cooler/bluer)
-        "light": "#8fa9bd",  # H: 207° (shifts warmer/toward cyan)
+        "base": "#607a97",   # H: 210° L: 48% (blue-gray)
+        "dark": "#3d4f63",   # H: 213° L: 32% (shifts cooler/bluer, Δ-16%)
+        "light": "#a3bdd4",  # H: 207° L: 73% (shifts warmer/cyan, Δ+25%)
     },
     "Terracotta": {
-        "base": "#b87b6a",   # H: 12° (warm terracotta)
-        "dark": "#8f5d4f",   # H: 8° (shifts toward brick red)
-        "light": "#d9a090",  # H: 16° (shifts toward peachy-pink)
+        "base": "#b87b6a",   # H: 12° L: 57% (warm terracotta)
+        "dark": "#7a4a3e",   # H: 8° L: 38% (shifts toward brick red, Δ-19%)
+        "light": "#e8b5a5",  # H: 16° L: 77% (shifts peachy-pink, Δ+20%)
     },
     "Black Rock": {
-        "base": "#747b8a",   # H: 220° (cool gray-blue)
-        "dark": "#5a5f6d",   # H: 225° (shifts cooler/bluer)
-        "light": "#9ca3ad",  # H: 215° (shifts warmer/toward steel)
+        "base": "#747b8a",   # H: 220° L: 51% (cool gray-blue)
+        "dark": "#494f5c",   # H: 225° L: 33% (shifts cooler/bluer, Δ-18%)
+        "light": "#a8b0be",  # H: 215° L: 71% (shifts warmer/steel, Δ+20%)
     },
     "Sage": {
-        "base": "#8fb14b",   # H: 75° (yellow-green)
-        "dark": "#6d8a3a",   # H: 72° (shifts toward olive)
-        "light": "#b3d378",  # H: 78° (shifts toward lime)
+        "base": "#8fb14b",   # H: 75° L: 50% (yellow-green)
+        "dark": "#5a6e2f",   # H: 72° L: 32% (shifts toward olive, Δ-18%)
+        "light": "#c5e088",  # H: 78° L: 73% (shifts toward lime, Δ+23%)
     },
     "Golden Amber": {
-        "base": "#f9c574",   # H: 40° (golden yellow)
-        "dark": "#d9a558",   # H: 35° (shifts toward amber-orange)
-        "light": "#ffd99f",  # H: 45° (shifts toward cream)
+        "base": "#f9c574",   # H: 40° L: 72% (golden yellow)
+        "dark": "#b8873e",   # H: 35° L: 52% (shifts amber-orange, Δ-20%)
+        "light": "#ffe0b0",  # H: 45° L: 90% (shifts toward cream, Δ+18%)
     },
     "Flamingo": {
-        "base": "#e75351",   # H: 1° (coral-red)
-        "dark": "#c73e3e",   # H: 0° (shifts toward deep burgundy)
-        "light": "#ff7b7d",  # H: 359° (shifts toward pink-coral)
+        "base": "#e75351",   # H: 1° L: 60% (coral-red)
+        "dark": "#a12f2d",   # H: 0° L: 41% (shifts deep burgundy, Δ-19%)
+        "light": "#ff9d9b",  # H: 359° L: 80% (shifts pink-coral, Δ+20%)
     },
     "Blue Calx": {
-        "base": "#b8c5d9",   # H: 212° (powder blue)
-        "dark": "#95a3bd",   # H: 218° (shifts toward periwinkle)
-        "light": "#d4e0e8",  # H: 206° (shifts toward cyan-blue)
+        "base": "#b8c5d9",   # H: 212° L: 78% (powder blue)
+        "dark": "#7b8da8",   # H: 218° L: 58% (shifts periwinkle, Δ-20%)
+        "light": "#e5edf5",  # H: 206° L: 93% (shifts cyan-blue, Δ+15%)
     },
 }
 
