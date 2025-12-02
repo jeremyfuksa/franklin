@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "franklin-cli"
-version = "2.0.1"
+version = "2.0.2"
 description = "A modern Zsh environment manager with cross-platform support"
 authors = [
     {name = "Jeremy Fuksa", email = "jeremy.fuksa@gmail.com"}

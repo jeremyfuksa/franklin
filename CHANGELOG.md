@@ -7,6 +7,26 @@ and the project aims to follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [2.0.2] - 2025-12-02
+
+### Changed
+
+- **BREAKING:** Removed NVM lazy loading in favor of traditional eager initialization for reliability in non-interactive shells and agent/CLI tool contexts.
+
+### Fixed
+
+- Node.js and npm now work correctly in non-interactive shells, subprocesses, and when invoked by AI agents or automation tools.
+- Commands like `bash -c "npm install"` no longer fail due to undefined wrapper functions.
+
+### Technical
+
+This patch prioritizes reliability over the ~200-400ms shell startup time penalty from loading NVM. The lazy loading pattern (introduced in v2.0) was causing failures when:
+- Agents spawned non-interactive subshells
+- Scripts used absolute paths to node/npm
+- Commands were invoked via `bash -c` or similar
+
+Users who need sub-100ms startup can re-enable lazy loading via `~/.franklin.local.zsh`.
+
 ## [2.0.1] - 2025-12-02
 
 ### Added

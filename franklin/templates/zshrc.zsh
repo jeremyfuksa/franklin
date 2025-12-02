@@ -213,41 +213,14 @@ if command -v starship >/dev/null 2>&1; then
     eval "$(starship init zsh)"
 fi
 
-# --- NVM Lazy Loading ---
-# NVM is expensive to load on every shell startup, so we lazy-load it
-# The first time you run 'nvm', 'node', 'npm', or 'npx', it will load NVM
-
+# --- NVM (Node Version Manager) ---
+# Load NVM if installed
 export NVM_DIR="${HOME}/.nvm"
+[ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
+[ -s "$NVM_DIR/bash_completion" ] && \. "$NVM_DIR/bash_completion"
 
-# Lazy-load function
-_lazy_load_nvm() {
-    unset -f nvm node npm npx
-    [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
-    [ -s "$NVM_DIR/bash_completion" ] && \. "$NVM_DIR/bash_completion"
-}
-
-nvm() {
-    _lazy_load_nvm
-    nvm "$@"
-}
-
-node() {
-    _lazy_load_nvm
-    node "$@"
-}
-
-npm() {
-    _lazy_load_nvm
-    npm "$@"
-}
-
-npx() {
-    _lazy_load_nvm
-    npx "$@"
-}
-
-# --- UV (Python Package Manager) Lazy Loading ---
-# Similar to NVM, lazy-load uv
+# --- UV (Python Package Manager) ---
+# Ensure uv is on PATH if installed
 if [ -f "${HOME}/.local/bin/uv" ]; then
     export PATH="${HOME}/.local/bin:${PATH}"
 fi
