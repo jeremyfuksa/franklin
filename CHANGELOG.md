@@ -7,15 +7,6 @@ and the project aims to follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
-### Fixed
-
-- **CRITICAL:** Fixed misleading MOTD services documentation that caused user confusion:
-  - Corrected variable name: `MOTD_SERVICES` → `MONITORED_SERVICES` throughout README and CHANGELOG
-  - Updated `.franklin.local.zsh` template to clearly explain services MUST be in `~/.config/franklin/config.env`, NOT in the local overrides file
-  - Added explicit instructions: `MONITORED_SERVICES="nginx,postgresql,meshtasticd"` (comma-separated) in config.env
-  - Clarified that services only appear when running (`systemctl is-active` returns "active")
-- Removed outdated Debian/NVM PATH warning from installer (issue was fixed in 2.0.1/2.0.2 with NVM PATH fallback logic and eager loading).
-
 ## [2.0.2] - 2025-12-02
 
 ### Changed
@@ -26,6 +17,12 @@ and the project aims to follow [Semantic Versioning](https://semver.org/).
 
 - Node.js and npm now work correctly in non-interactive shells, subprocesses, and when invoked by AI agents or automation tools.
 - Commands like `bash -c "npm install"` no longer fail due to undefined wrapper functions.
+- **CRITICAL:** Fixed misleading MOTD services documentation that caused user confusion:
+  - Corrected variable name: `MOTD_SERVICES` → `MONITORED_SERVICES` throughout README and CHANGELOG
+  - Updated `.franklin.local.zsh` template to clearly explain services MUST be in `~/.config/franklin/config.env`, NOT in the local overrides file
+  - Added explicit instructions: `MONITORED_SERVICES="nginx,postgresql,meshtasticd"` (comma-separated) in config.env
+  - Clarified that services only appear when running (`systemctl is-active` returns "active")
+- Removed outdated Debian/NVM PATH warning from installer (issue was fixed in 2.0.1/2.0.2 with NVM PATH fallback logic and eager loading).
 
 ### Technical
 
