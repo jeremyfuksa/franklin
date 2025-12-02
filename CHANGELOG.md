@@ -9,7 +9,11 @@ and the project aims to follow [Semantic Versioning](https://semver.org/).
 
 ### Fixed
 
-- Corrected documentation inconsistency: `MOTD_SERVICES` → `MONITORED_SERVICES` in README and CHANGELOG (the code always used `MONITORED_SERVICES` in `~/.config/franklin/config.env`).
+- **CRITICAL:** Fixed misleading MOTD services documentation that caused user confusion:
+  - Corrected variable name: `MOTD_SERVICES` → `MONITORED_SERVICES` throughout README and CHANGELOG
+  - Updated `.franklin.local.zsh` template to clearly explain services MUST be in `~/.config/franklin/config.env`, NOT in the local overrides file
+  - Added explicit instructions: `MONITORED_SERVICES="nginx,postgresql,meshtasticd"` (comma-separated) in config.env
+  - Clarified that services only appear when running (`systemctl is-active` returns "active")
 - Removed outdated Debian/NVM PATH warning from installer (issue was fixed in 2.0.1/2.0.2 with NVM PATH fallback logic and eager loading).
 
 ## [2.0.2] - 2025-12-02

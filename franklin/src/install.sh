@@ -360,11 +360,13 @@ if [ ! -f "$LOCAL_CONFIG_PATH" ]; then
 # MOTD (Message of the Day)
 # -------------------------
 # Enable/disable the Franklin MOTD banner on login:
-# export FRANKLIN_ENABLE_MOTD=1
-# export FRANKLIN_SHOW_MOTD_ON_LOGIN=1
+# export FRANKLIN_SHOW_MOTD=1   # Set to 0 to disable
 
-# Track additional services in the MOTD dashboard:
-# Add to ~/.config/franklin/config.env instead (see MONITORED_SERVICES above)
+# To track services in the MOTD (e.g., nginx, postgresql, meshtasticd):
+# Services MUST be added to ~/.config/franklin/config.env, NOT here.
+# Edit ~/.config/franklin/config.env and add (comma-separated):
+#   MONITORED_SERVICES="nginx,postgresql,meshtasticd"
+# Services will only appear if they are running (systemctl is-active)
 
 # Updates
 # -------
