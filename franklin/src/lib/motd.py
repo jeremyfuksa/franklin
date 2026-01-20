@@ -43,7 +43,7 @@ def get_hostname() -> str:
     """Get the system hostname."""
     try:
         return socket.gethostname()
-    except Exception:
+    except (socket.error, OSError):
         return "unknown"
 
 
@@ -53,7 +53,7 @@ def get_ip_address() -> str:
         with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as s:
             s.connect(("8.8.8.8", 80))
             return s.getsockname()[0]
-    except Exception:
+    except (socket.error, OSError, TimeoutError):
         return "0.0.0.0"
 
 
@@ -68,9 +68,14 @@ def get_os_version() -> str:
                 capture_output=True,
                 text=True,
                 check=True,
+                timeout=2,
             )
             return f"macOS {result.stdout.strip()}"
-        except Exception:
+        except (
+            FileNotFoundError,
+            subprocess.CalledProcessError,
+            subprocess.TimeoutExpired,
+        ):
             return "macOS"
     elif system == "Linux":
         try:
@@ -79,12 +84,17 @@ def get_os_version() -> str:
                 for line in f:
                     if "=" in line:
                         key, value = line.strip().split("=", 1)
-                        os_release[key] = value.strip('"')
+                        # Handle quoted values with potential escaped quotes
+                        if value.startswith('"') and value.endswith('"'):
+                            value = value[1:-1].replace('\\"', '"')
+                        elif value.startswith("'") and value.endswith("'"):
+                            value = value[1:-1].replace("\\'", "'")
+                        os_release[key] = value
 
                 distro = os_release.get("NAME", "Linux")
                 version = os_release.get("VERSION_ID", "")
                 return f"{distro} {version}" if version else distro
-        except Exception:
+        except (FileNotFoundError, IOError, OSError):
             return "Linux"
     else:
         return system
@@ -101,8 +111,8 @@ def get_disk_stats() -> Tuple[str, float, str, str]:
     """Get disk usage statistics."""
     try:
         disk = shutil.disk_usage("/")
-        total_gb = disk.total / (1024 ** 3)
-        used_gb = disk.used / (1024 ** 3)
+        total_gb = disk.total / (1024**3)
+        used_gb = disk.used / (1024**3)
         percent = (disk.used / disk.total) * 100
 
         bar = create_progress_bar(percent)
@@ -115,8 +125,8 @@ def get_memory_stats() -> Tuple[str, str]:
     """Get memory usage statistics."""
     try:
         mem = psutil.virtual_memory()
-        used_gb = mem.used / (1024 ** 3)
-        total_gb = mem.total / (1024 ** 3)
+        used_gb = mem.used / (1024**3)
+        total_gb = mem.total / (1024**3)
         return f"{used_gb:.0f}G", f"{total_gb:.0f}G"
     except Exception:
         return "??", "??"
@@ -132,9 +142,15 @@ def get_docker_containers() -> List[str]:
             check=True,
             timeout=2,
         )
-        containers = [name.strip() for name in result.stdout.strip().split("\n") if name.strip()]
+        containers = [
+            name.strip() for name in result.stdout.strip().split("\n") if name.strip()
+        ]
         return containers
-    except Exception:
+    except (
+        FileNotFoundError,
+        subprocess.CalledProcessError,
+        subprocess.TimeoutExpired,
+    ):
         # Return empty list if Docker isn't available
         return []
 
@@ -142,33 +158,35 @@ def get_docker_containers() -> List[str]:
 def get_monitored_services_list() -> List[str]:
     """
     Get list of services to monitor from config file.
-    
+
     Users can define services in ~/.config/franklin/config.env:
         MONITORED_SERVICES="service1,service2,service3"
     """
     monitored = []
-    
+
     try:
         if CONFIG_FILE.exists():
             with open(CONFIG_FILE) as f:
                 for line in f:
                     if line.startswith("MONITORED_SERVICES="):
                         services_str = line.split("=", 1)[1].strip().strip('"')
-                        monitored = [s.strip() for s in services_str.split(",") if s.strip()]
+                        monitored = [
+                            s.strip() for s in services_str.split(",") if s.strip()
+                        ]
                         break
-    except Exception:
+    except (FileNotFoundError, IOError, OSError):
         pass
-    
+
     return monitored
 
 
 def get_system_services() -> List[str]:
     """Get list of running system services configured by user."""
     monitored_services = get_monitored_services_list()
-    
+
     if not monitored_services:
         return []
-    
+
     running_services = []
     system = platform.system()
 
@@ -182,13 +200,17 @@ def get_system_services() -> List[str]:
                 check=True,
                 timeout=2,
             )
-            # Check which monitored services are running
+            # Check which monitored services are running using word boundary matching
             for service in monitored_services:
+                import re
+
                 for line in result.stdout.split("\n"):
-                    if service.lower() in line.lower():
+                    if re.search(
+                        r"\b" + re.escape(service) + r"\b", line, re.IGNORECASE
+                    ):
                         running_services.append(service)
                         break
-                        
+
         elif system == "Linux":
             # Linux: Use systemctl to check each monitored service
             for service in monitored_services:
@@ -203,14 +225,16 @@ def get_system_services() -> List[str]:
                         running_services.append(service)
                 except Exception:
                     continue
-                    
+
     except Exception:
         pass
 
     return running_services
 
 
-def format_grid(items: List[str], width: int, color: str, max_item_width: int = 22) -> List[Text]:
+def format_grid(
+    items: List[str], width: int, color: str, max_item_width: int = 22
+) -> List[Text]:
     """Format items in a grid layout with color."""
     if not items:
         return []
@@ -219,7 +243,7 @@ def format_grid(items: List[str], width: int, color: str, max_item_width: int = 
 
     lines = []
     for i in range(0, len(items), items_per_line):
-        chunk = items[i:i + items_per_line]
+        chunk = items[i : i + items_per_line]
         line = Text()
         for item in chunk:
             line.append(f" {GLYPH_ACTION} ", style=color)
@@ -245,7 +269,7 @@ def load_motd_color() -> Tuple[str, Dict[str, str]]:
                     if line.startswith("MOTD_COLOR_NAME="):
                         color_name = line.split("=", 1)[1].strip().strip('"')
                         break
-        except Exception:
+        except (FileNotFoundError, IOError, OSError):
             pass
 
     # If custom color or unknown, use default
@@ -258,13 +282,13 @@ def load_motd_color() -> Tuple[str, Dict[str, str]]:
 def render_motd(width: Optional[int] = None) -> None:
     """
     Render the Campfire MOTD banner.
-    
+
     Displays:
     - Hostname and IP address
     - System stats (disk, RAM, OS version)
     - Running Docker containers (if Docker is available)
     - Monitored services (configured in ~/.config/franklin/config.env)
-    
+
     To monitor custom services, add to your config file:
         MONITORED_SERVICES="service1,service2,service3"
     """

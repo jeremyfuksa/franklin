@@ -85,7 +85,7 @@ class CampfireUI:
         else:
             self.console.print(output)
 
-    def print_branch(self, text: str, style: Optional[str] = None) -> None:
+    def print_branch(self, text: str, style: Optional[str | Style] = None) -> None:
         """
         Print a branch/output line (Level 1).
 
@@ -93,7 +93,7 @@ class CampfireUI:
 
         Args:
             text: The branch text
-            style: Optional Rich style/color
+            style: Optional Rich style/color (string or Style object)
         """
         output = f"{GLYPH_BRANCH}  {text}"
         if style and self.is_tty:
@@ -207,7 +207,7 @@ class CampfireUI:
             return
 
         # Calculate max key length for alignment
-        max_key_length = max(len(key) for key in data.keys())
+        max_key_length = max((len(key) for key in data.keys()), default=0)
 
         for i, (key, value) in enumerate(data.items()):
             # First line gets the branch glyph, rest get spaces
@@ -221,7 +221,9 @@ class CampfireUI:
             output = f"{prefix}{padded_key} :: {value}"
             self.console.print(output)
 
-    def truncate_output(self, lines: list[str], max_lines: int = 10, log_path: Optional[str] = None) -> None:
+    def truncate_output(
+        self, lines: list[str], max_lines: int = 10, log_path: Optional[str] = None
+    ) -> None:
         """
         Print output with truncation if it exceeds max_lines.
 

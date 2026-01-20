@@ -93,11 +93,13 @@ def _ensure_first_run_color(ctx: "typer.Context") -> None:
     ).strip()
 
     sel_int = _parse_numeric_selection(selection, default_idx, len(choices))
-    if sel_int != default_idx or selection:
-        color_choice = choices[sel_int - 1]
-    else:
-        ui.print_warning(f"Invalid choice: {selection}, using default {DEFAULT_CAMPFIRE_COLOR}")
+    if sel_int == default_idx and selection not in (str(default_idx), ""):
+        ui.print_warning(
+            f"Invalid choice: {selection}, using default {DEFAULT_CAMPFIRE_COLOR}"
+        )
         color_choice = DEFAULT_CAMPFIRE_COLOR
+    else:
+        color_choice = choices[sel_int - 1]
 
     hex_color = CAMPFIRE_COLORS[color_choice]["base"]
     CONFIG_DIR.mkdir(parents=True, exist_ok=True)
@@ -110,10 +112,10 @@ def _ensure_first_run_color(ctx: "typer.Context") -> None:
 
 def _detect_os_family() -> str:
     """Detect OS family for package manager selection.
-    
+
     Returns:
         'macos', 'debian', 'fedora', or 'unknown'
-    
+
     Note: Uses 'fedora' for all RHEL-family distros (Fedora, RHEL, CentOS, Rocky, Alma)
     to match install.sh naming convention.
     """
@@ -132,11 +134,18 @@ def _detect_os_family() -> str:
     return "unknown"
 
 
-def _run_logged(cmd: List[str], dry_run: bool = False) -> Tuple[bool, List[str]]:
+def _run_logged(
+    cmd: List[str], dry_run: bool = False, timeout: int = 600
+) -> Tuple[bool, List[str]]:
     """
     Run a command, streaming stdout to UI branch lines.
 
     Returns (success, stdout_lines) without raising so callers can collect failures.
+
+    Args:
+        cmd: Command to run as list of strings
+        dry_run: If True, print command without executing
+        timeout: Maximum seconds to wait for command completion (default: 600)
     """
     if dry_run:
         ui.print_branch(f"DRY RUN: {' '.join(cmd)}")
@@ -147,6 +156,7 @@ def _run_logged(cmd: List[str], dry_run: bool = False) -> Tuple[bool, List[str]]
             capture_output=True,
             text=True,
             check=True,
+            timeout=timeout,
         )
         lines = [line for line in result.stdout.strip().split("\n") if line]
         for line in lines:
@@ -154,6 +164,9 @@ def _run_logged(cmd: List[str], dry_run: bool = False) -> Tuple[bool, List[str]]
         return True, lines
     except FileNotFoundError:
         ui.print_error(f"{cmd[0]} not found on this system")
+        return False, []
+    except subprocess.TimeoutExpired:
+        ui.print_error(f"{cmd[0]} timed out after {timeout} seconds")
         return False, []
     except subprocess.CalledProcessError as e:
         stderr = e.stderr.strip() if e.stderr else str(e)
@@ -269,9 +282,10 @@ def doctor(
             text=True,
             check=True,
         )
-        zsh_version = result.stdout.strip().split()[1]
+        version_parts = result.stdout.strip().split()
+        zsh_version = version_parts[1] if len(version_parts) > 1 else "unknown"
         checks["Shell"] = f"Zsh {zsh_version}"
-    except Exception:
+    except (FileNotFoundError, subprocess.CalledProcessError, IndexError):
         checks["Shell"] = "Zsh not found"
         failures.append("zsh")
 
@@ -283,9 +297,10 @@ def doctor(
             text=True,
             check=True,
         )
-        sheldon_version = result.stdout.strip().split()[1]
+        version_parts = result.stdout.strip().split()
+        sheldon_version = version_parts[1] if len(version_parts) > 1 else "unknown"
         checks["Plugin Manager"] = f"Sheldon {sheldon_version}"
-    except Exception:
+    except (FileNotFoundError, subprocess.CalledProcessError, IndexError):
         checks["Plugin Manager"] = "Sheldon not found"
         failures.append("sheldon")
 
@@ -297,9 +312,12 @@ def doctor(
             text=True,
             check=True,
         )
-        starship_version = result.stdout.strip().split()[1]
+        # Starship outputs multi-line version info, extract version from first line
+        first_line = result.stdout.strip().split("\n")[0]
+        version_parts = first_line.split()
+        starship_version = version_parts[1] if len(version_parts) > 1 else "unknown"
         checks["Prompt"] = f"Starship {starship_version}"
-    except Exception:
+    except (FileNotFoundError, subprocess.CalledProcessError, IndexError):
         checks["Prompt"] = "Starship not found"
         failures.append("starship")
 
@@ -383,7 +401,7 @@ def update(
     ok, _ = _run_logged(["git", "-C", str(FRANKLIN_ROOT), "pull"])
     if not ok:
         raise typer.Exit(code=1)
-    
+
     ui.section_end()
 
 
@@ -495,11 +513,38 @@ def config(
     Without flags: Opens an interactive TUI.
     With --color: Sets the MOTD banner color.
     """
+
     def save_color(color_name: str, hex_color: str) -> None:
         CONFIG_DIR.mkdir(parents=True, exist_ok=True)
+
+        # Read existing config to preserve other settings
+        existing_config = {}
+        if CONFIG_FILE.exists():
+            try:
+                with open(CONFIG_FILE) as f:
+                    for line in f:
+                        if line.startswith("MONITORED_SERVICES="):
+                            existing_config["MONITORED_SERVICES"] = line.rstrip("\n")
+            except Exception:
+                pass
+
+        # Write config with updated color and preserved services
         with open(CONFIG_FILE, "w") as f:
+            f.write("# Franklin Configuration\n")
+            f.write(
+                f"# Generated: {__import__('datetime').datetime.now().isoformat()}\n"
+            )
+            f.write("\n")
+            f.write("# MOTD Color (Campfire palette)\n")
             f.write(f'MOTD_COLOR_NAME="{color_name}"\n')
             f.write(f'MOTD_COLOR="{hex_color}"\n')
+            f.write("\n")
+            f.write("# Monitored Services (comma-separated list)\n")
+            f.write('# Example: MONITORED_SERVICES="nginx,postgresql,redis"\n')
+            if "MONITORED_SERVICES" in existing_config:
+                f.write(existing_config["MONITORED_SERVICES"] + "\n")
+            else:
+                f.write('# MONITORED_SERVICES=""\n')
         ui.print_success(f"MOTD color set to {color_name} ({hex_color})")
 
     # Flag-driven (non-interactive) path
@@ -507,7 +552,13 @@ def config(
         if color in CAMPFIRE_COLORS:
             save_color(color, CAMPFIRE_COLORS[color]["base"])
             return
-        if color.startswith("#") and len(color) == 7:
+        import re
+
+        if (
+            color.startswith("#")
+            and len(color) == 7
+            and re.match(r"^#[0-9a-fA-F]{6}$", color)
+        ):
             save_color("custom", color)
             return
         ui.print_error(f"Invalid color: {color}")
@@ -520,8 +571,11 @@ def config(
 
     # Show current color
     from .motd import load_motd_color
+
     current_color_name, current_colors = load_motd_color()
-    ui.print_branch(f"Current MOTD color: {current_color_name} ({current_colors['base']})")
+    ui.print_branch(
+        f"Current MOTD color: {current_color_name} ({current_colors['base']})"
+    )
 
     # Color selection with base + dark swatches
     ui.print_branch("Available Campfire colors:")
@@ -542,7 +596,13 @@ def config(
     ).strip()
 
     # Allow hex entry directly
-    if selection.startswith("#") and len(selection) == 7:
+    import re
+
+    if (
+        selection.startswith("#")
+        and len(selection) == 7
+        and re.match(r"^#[0-9a-fA-F]{6}$", selection)
+    ):
         save_color("custom", selection)
         return
 
