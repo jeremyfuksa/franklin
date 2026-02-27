@@ -118,29 +118,47 @@ ui_header "Configuring MOTD color"
 MOTD_COLOR="#607a97"  # Cello
 MOTD_COLOR_NAME="Cello"
 
-# Color lookup table (assign separately to avoid unbound variable with set -u)
-declare -A COLOR_MAP
-COLOR_MAP["Cello"]="#607a97"
-COLOR_MAP["Terracotta"]="#b87b6a"
-COLOR_MAP["Black Rock"]="#747b8a"
-COLOR_MAP["Sage"]="#8fb14b"
-COLOR_MAP["Golden Amber"]="#f9c574"
-COLOR_MAP["Flamingo"]="#e75351"
-COLOR_MAP["Blue Calx"]="#b8c5d9"
-
-# Handle preset color from --color flag
+# Handle preset color from --color flag (case for Bash 3 / macOS compatibility)
 if [ -n "$PRESET_COLOR" ]; then
-    if [ -n "${COLOR_MAP[$PRESET_COLOR]:-}" ]; then
-        MOTD_COLOR="${COLOR_MAP[$PRESET_COLOR]}"
-        MOTD_COLOR_NAME="$PRESET_COLOR"
-        ui_success "Using preset color: $MOTD_COLOR_NAME ($MOTD_COLOR)"
-    elif [[ "$PRESET_COLOR" =~ ^#[0-9A-Fa-f]{6}$ ]]; then
-        MOTD_COLOR="$PRESET_COLOR"
-        MOTD_COLOR_NAME="custom"
-        ui_success "Using custom color: $MOTD_COLOR"
-    else
-        ui_warning "Invalid color '$PRESET_COLOR', using default (Cello)"
-    fi
+    case "$PRESET_COLOR" in
+        Cello)
+            MOTD_COLOR="#607a97"; MOTD_COLOR_NAME="Cello"
+            ui_success "Using preset color: $MOTD_COLOR_NAME ($MOTD_COLOR)"
+            ;;
+        Terracotta)
+            MOTD_COLOR="#b87b6a"; MOTD_COLOR_NAME="Terracotta"
+            ui_success "Using preset color: $MOTD_COLOR_NAME ($MOTD_COLOR)"
+            ;;
+        "Black Rock")
+            MOTD_COLOR="#747b8a"; MOTD_COLOR_NAME="Black Rock"
+            ui_success "Using preset color: $MOTD_COLOR_NAME ($MOTD_COLOR)"
+            ;;
+        Sage)
+            MOTD_COLOR="#8fb14b"; MOTD_COLOR_NAME="Sage"
+            ui_success "Using preset color: $MOTD_COLOR_NAME ($MOTD_COLOR)"
+            ;;
+        "Golden Amber")
+            MOTD_COLOR="#f9c574"; MOTD_COLOR_NAME="Golden Amber"
+            ui_success "Using preset color: $MOTD_COLOR_NAME ($MOTD_COLOR)"
+            ;;
+        Flamingo)
+            MOTD_COLOR="#e75351"; MOTD_COLOR_NAME="Flamingo"
+            ui_success "Using preset color: $MOTD_COLOR_NAME ($MOTD_COLOR)"
+            ;;
+        "Blue Calx")
+            MOTD_COLOR="#b8c5d9"; MOTD_COLOR_NAME="Blue Calx"
+            ui_success "Using preset color: $MOTD_COLOR_NAME ($MOTD_COLOR)"
+            ;;
+        *)
+            if [[ "$PRESET_COLOR" =~ ^#[0-9A-Fa-f]{6}$ ]]; then
+                MOTD_COLOR="$PRESET_COLOR"
+                MOTD_COLOR_NAME="custom"
+                ui_success "Using custom color: $MOTD_COLOR"
+            else
+                ui_warning "Invalid color '$PRESET_COLOR', using default (Cello)"
+            fi
+            ;;
+    esac
 # Interactive mode if TTY and not --non-interactive
 elif [ -t 0 ] && [ "$NON_INTERACTIVE" = false ]; then
     echo "" >&2

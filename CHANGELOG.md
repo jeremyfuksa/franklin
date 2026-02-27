@@ -7,6 +7,12 @@ and the project aims to follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [2.0.5] - 2025-02-27
+
+### Fixed
+
+- **macOS / Bash 3:** Installer no longer fails with "declare: -A: invalid option" on systems where Bash is 3.x (e.g. macOS default). Replaced associative array with a portable `case`-based color lookup.
+
 ## [2.0.4] - 2025-02-27
 
 ### Fixed
