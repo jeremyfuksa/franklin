@@ -4,9 +4,9 @@
 
 set -e
 
-# Source UI functions from install.sh
+# Source UI library (shared with install.sh)
 FRANKLIN_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
-source <(sed -n '/^# --- Campfire UI Functions/,/^# --- Platform Detection/p' "${FRANKLIN_ROOT}/franklin/src/install.sh" | head -n -1)
+source "${FRANKLIN_ROOT}/franklin/src/lib/ui.sh"
 
 echo "════════════════════════════════════════════════════════════════════════════════"
 echo "FRANKLIN CAMPFIRE UI DEMO"

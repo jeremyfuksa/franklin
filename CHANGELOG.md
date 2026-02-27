@@ -7,6 +7,20 @@ and the project aims to follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [2.0.4] - 2025-02-27
+
+### Fixed
+
+- **CRITICAL:** Installer MOTD color step no longer fails with "Cello: unbound variable" when using `set -u`. Resolved by assigning associative array (`COLOR_MAP`) elements individually instead of compound assignment.
+- `install.sh --color` and `bootstrap.sh --dir`/`--ref` now validate that a value is provided and exit with a clear error instead of referencing unbound `$2`.
+- `test/ui-demo.sh` now correctly sources the shared UI library (`lib/ui.sh`) instead of a non-existent section in `install.sh`.
+
+### Changed
+
+- Removed machine-specific PATH entries (Antigravity, Windsurf) from the zshrc template; user-specific paths should go in `~/.franklin.local.zsh`.
+- `/etc/os-release` parsing now uses `${ID:-}` to guard against edge-case distros where `ID` may be unset.
+- macOS zshrc now sets `LS_COLORS` (GNU format) alongside `LSCOLORS` so completion coloring works on Darwin.
+
 ## [2.0.2] - 2025-12-02
 
 ### Changed

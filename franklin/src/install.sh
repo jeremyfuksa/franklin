@@ -36,6 +36,10 @@ while [ $# -gt 0 ]; do
             shift
             ;;
         --color)
+            if [ $# -lt 2 ]; then
+                echo "ERROR: --color requires an argument" >&2
+                exit 1
+            fi
             PRESET_COLOR="$2"
             shift 2
             ;;
@@ -66,7 +70,7 @@ case "$(uname -s)" in
         # Parse /etc/os-release
         if [ -f /etc/os-release ]; then
             . /etc/os-release
-            case "$ID" in
+            case "${ID:-}" in
                 debian|ubuntu|pop|elementary|linuxmint|neon|kali|raspbian)
                     OS_FAMILY="debian"
                     OS_DISTRO="$ID"
@@ -76,7 +80,7 @@ case "$(uname -s)" in
                     OS_DISTRO="$ID"
                     ;;
                 *)
-                    ui_error "Unsupported Linux distribution: $ID"
+                    ui_error "Unsupported Linux distribution: ${ID:-unknown}"
                     ;;
             esac
         else
@@ -114,16 +118,15 @@ ui_header "Configuring MOTD color"
 MOTD_COLOR="#607a97"  # Cello
 MOTD_COLOR_NAME="Cello"
 
-# Color lookup table
-declare -A COLOR_MAP=(
-    ["Cello"]="#607a97"
-    ["Terracotta"]="#b87b6a"
-    ["Black Rock"]="#747b8a"
-    ["Sage"]="#8fb14b"
-    ["Golden Amber"]="#f9c574"
-    ["Flamingo"]="#e75351"
-    ["Blue Calx"]="#b8c5d9"
-)
+# Color lookup table (assign separately to avoid unbound variable with set -u)
+declare -A COLOR_MAP
+COLOR_MAP["Cello"]="#607a97"
+COLOR_MAP["Terracotta"]="#b87b6a"
+COLOR_MAP["Black Rock"]="#747b8a"
+COLOR_MAP["Sage"]="#8fb14b"
+COLOR_MAP["Golden Amber"]="#f9c574"
+COLOR_MAP["Flamingo"]="#e75351"
+COLOR_MAP["Blue Calx"]="#b8c5d9"
 
 # Handle preset color from --color flag
 if [ -n "$PRESET_COLOR" ]; then
