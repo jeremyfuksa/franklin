@@ -79,7 +79,7 @@ symbol = "⬢ "
 style = "bold green"
 # Activate in common JS/TS/Bundler contexts so version shows reliably
 detect_extensions = ["js", "mjs", "cjs", "ts", "jsx", "tsx", "json", "vue", "svelte"]
-detect_files = ["package.json", "package-lock.json", "yarn.lock", "pnpm-lock.yaml", "bun.lockb", ".node-version", ".nvmrc", "deno.json", "deno.jsonc"]
+detect_files = ["package.json", "package-lock.json", "yarn.lock", "pnpm-lock.yaml", "bun.lockb", ".node-version", ".nvmrc", ".mise.toml", "deno.json", "deno.jsonc"]
 detect_folders = ["node_modules"]
 
 [rust]

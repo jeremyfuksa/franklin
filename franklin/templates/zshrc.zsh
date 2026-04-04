@@ -30,38 +30,11 @@ _franklin_dedupe_path() {
     echo "$deduped_path"
 }
 
-# Resolve the NVM default alias to a concrete Node bin directory without fully loading nvm
-_franklin_nvm_default_bin() {
-    local nvm_dir="${NVM_DIR:-${HOME}/.nvm}"
-    local alias_path="${nvm_dir}/alias/default"
-    local target=""
-    local depth=0
-
-    # Preferred path: explicit default alias (or alias chain) pointing at a vX.Y.Z
-    if [[ -f "$alias_path" ]]; then
-        target="$(<"$alias_path")"
-        while (( depth < 3 )); do
-            if [[ "$target" == v* ]] && [[ -d "${nvm_dir}/versions/node/${target}/bin" ]]; then
-                echo "${nvm_dir}/versions/node/${target}/bin"
-                return
-            fi
-            if [[ -f "${nvm_dir}/alias/${target}" ]]; then
-                target="$(<"${nvm_dir}/alias/${target}")"
-                depth=$((depth + 1))
-                continue
-            fi
-            break
-        done
-    fi
-
-    # Fallback: if there is exactly one Node version installed under ~/.nvm, use it
-    if [[ -d "${nvm_dir}/versions/node" ]]; then
-        local -a bins
-        bins=(${nvm_dir}/versions/node/*/bin(N/))
-        if (( ${#bins[@]} == 1 )); then
-            echo "${bins[1]}"
-            return
-        fi
+# Resolve mise-managed shims directory for early PATH setup
+_franklin_mise_shims_bin() {
+    local shims_dir="${HOME}/.local/share/mise/shims"
+    if [[ -d "$shims_dir" ]]; then
+        echo "$shims_dir"
     fi
 }
 
@@ -75,9 +48,9 @@ _franklin_setup_path() {
         "${HOME}/.local/bin"
     )
 
-    local nvm_default_bin="$(_franklin_nvm_default_bin)"
-    if [[ -n "$nvm_default_bin" ]]; then
-        priority_dirs+=("$nvm_default_bin")
+    local mise_shims_bin="$(_franklin_mise_shims_bin)"
+    if [[ -n "$mise_shims_bin" ]]; then
+        priority_dirs+=("$mise_shims_bin")
     fi
 
     # Platform-specific directories
@@ -215,11 +188,11 @@ if command -v starship >/dev/null 2>&1; then
     eval "$(starship init zsh)"
 fi
 
-# --- NVM (Node Version Manager) ---
-# Load NVM if installed
-export NVM_DIR="${HOME}/.nvm"
-[ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
-[ -s "$NVM_DIR/bash_completion" ] && \. "$NVM_DIR/bash_completion"
+# --- mise (Runtime Manager) ---
+# Activate mise for Node.js and Python version management
+if command -v mise >/dev/null 2>&1; then
+    eval "$(mise activate zsh)"
+fi
 
 # --- UV (Python Package Manager) ---
 # Ensure uv is on PATH if installed

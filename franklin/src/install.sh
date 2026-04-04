@@ -8,7 +8,7 @@
 # 2. Backs up existing Zsh configuration files
 # 3. Prompts for Campfire color selection (interactive mode)
 # 4. Installs dependencies via the appropriate package manager
-# 5. Sets up Sheldon, Starship, and NVM
+# 5. Sets up Sheldon, Starship, and mise
 # 6. Symlinks ~/.zshrc to the Franklin template
 # 7. Installs the Franklin CLI via Python
 #
@@ -314,18 +314,32 @@ fi
 ui_success "Dependencies installed"
 ui_section_end
 
-# --- Install NVM ---
-ui_header "Setting up NVM"
+# --- Install mise ---
+ui_header "Setting up mise"
 
-NVM_DIR="${HOME}/.nvm"
-if [ ! -d "$NVM_DIR" ]; then
-    ui_branch "Installing NVM..."
-    curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.5/install.sh | bash 2>&1 | sed 's/^/  /' >&2
+if ! command -v mise >/dev/null 2>&1; then
+    ui_branch "Installing mise..."
+    curl https://mise.run | sh 2>&1 | sed 's/^/  /' >&2
 else
-    ui_branch "NVM already installed"
+    ui_branch "mise already installed"
 fi
 
-ui_success "NVM ready"
+# Link mise config
+MISE_CONFIG_SRC="${FRANKLIN_ROOT}/config/mise.toml"
+MISE_CONFIG_LINK="${HOME}/.config/mise/config.toml"
+mkdir -p "$(dirname "$MISE_CONFIG_LINK")"
+if [ -f "$MISE_CONFIG_SRC" ]; then
+    ln -sf "$MISE_CONFIG_SRC" "$MISE_CONFIG_LINK"
+    ui_branch "Linked mise config"
+fi
+
+# Install managed runtimes (Node LTS + Python LTS)
+if command -v mise >/dev/null 2>&1; then
+    ui_branch "Installing runtimes via mise..."
+    mise install 2>&1 | sed 's/^/  /' >&2 || ui_warning "mise install had warnings (non-fatal)"
+fi
+
+ui_success "mise ready"
 ui_section_end
 
 # --- Set up Python Virtual Environment ---
@@ -374,9 +388,8 @@ if [ ! -f "$LOCAL_CONFIG_PATH" ]; then
 
 # PATH / Node / npm
 # -----------------
-# Example: pin a specific NVM-managed Node version on PATH at login.
-# Uncomment and adjust the version to match your system:
-# export PATH="$HOME/.nvm/versions/node/v18.18.0/bin:$PATH"
+# mise manages Node and Python versions globally via ~/.config/mise/config.toml.
+# To pin a project-local version, create a .mise.toml in the project directory.
 
 # MOTD (Message of the Day)
 # -------------------------

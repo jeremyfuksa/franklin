@@ -1,0 +1,7 @@
+# Franklin mise configuration
+# Manages Node.js and Python runtime versions
+# https://mise.jdx.dev
+
+[tools]
+node = "lts"
+python = "lts"
