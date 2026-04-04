@@ -34,7 +34,7 @@ docs/
 franklin/src/franklin_cli.egg-info/
 .ai-docs/
 
-# Node.js (for spec 006: NVM integration)
+# Node.js
 node_modules/
 npm-debug.log*
 yarn-error.log*

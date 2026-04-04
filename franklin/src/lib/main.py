@@ -427,7 +427,7 @@ def update_all(
     """
     Update Franklin core, plugins, and optionally system packages.
 
-    With --system: Updates OS packages, Sheldon plugins, Starship, NVM, and Node.
+    With --system: Updates OS packages, Sheldon plugins, Starship, mise runtimes, and Node.
     Without --system: Updates only Franklin core and Sheldon plugins.
     """
     ui.print_header("Franklin Update")

@@ -49,7 +49,7 @@ bash install.sh
 | Starship prompt | Configured via `starship.toml`; auto-enabled for a snappy shell. |
 | bat / batcat | Syntax-highlighted `cat` replacement; Franklin aliases `cat` ⇒ `bat`. |
 | fzf, ripgrep | Included on Linux for quick fuzzy search and grepping. |
-| NVM + Node LTS | Installed/pinned via `install.sh` & `update-all.sh`. |
+| mise + Node/Python LTS | Runtime versions managed via `mise.toml`; installed by `install.sh`. |
 | MOTD dashboard | Franklin Campfire banner with host/OS/disk/memory details. Toggle with `FRANKLIN_ENABLE_MOTD` / `FRANKLIN_SHOW_MOTD_ON_LOGIN`. |
 | Fonts | MOTD status icons (``, ``, turtle) require a Nerd Font (e.g., Dank Mono Nerd Font). |
 | Campfire UI palette | Non-banner UI chrome (install/update logs, badges) uses the Campfire palette (Cello/Terracotta/Black Rock) for consistent Franklin branding. |
@@ -60,7 +60,7 @@ Everything lives under your install dir (default `~/.local/share/franklin`) with
 
 | Command | Purpose |
 | --- | --- |
-| `update-all.sh` | Streams real-time progress while updating Franklin core files, OS packages (brew/apt/dnf), Sheldon plugins, Starship, Python, uv, NVM, Node, npm globals, and version pins. Detects your OS, filters noisy output in `auto` mode, and accepts `--mode=quiet|auto|verbose`. |
+| `update-all.sh` | Streams real-time progress while updating Franklin core files, OS packages (brew/apt/dnf), Sheldon plugins, Starship, mise runtimes (Node, Python), uv, npm globals, and version pins. Detects your OS, filters noisy output in `auto` mode, and accepts `--mode=quiet|auto|verbose`. |
 | `franklin` | Helper CLI wrapper; use `franklin update` for Franklin core only (via `update-franklin.sh`), `franklin update-all` for everything else, plus `franklin check`/`-v`. |
 | `motd` | Renders the Franklin dashboard on demand; auto-runs at login unless disabled. |
 | `reload` | Re-sources `.zshrc` after edits—Franklin's equivalent of poking his head out and checking his surroundings. |
@@ -151,4 +151,4 @@ MIT License. Check out the source at [github.com/jeremyfuksa/franklin](https://g
 Franklin stands on the shoulders of:
 - [Sheldon](https://github.com/rossmacarthur/sheldon) for plugin management
 - [Starship](https://github.com/starship/starship) for the prompt
-- [NVM](https://github.com/nvm-sh/nvm) for Node versioning
+- [mise](https://mise.jdx.dev) for Node and Python version management
