@@ -7,6 +7,10 @@ and the project aims to follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Fixed
+
+- **`chsh` password prompt is now actually visible.** The v2.1.1 chsh step piped chsh's stderr through `sed` to indent it, but `chsh`'s PAM `Password:` prompt has no trailing newline. `sed` is line-buffered, so it held the prompt in its buffer until a newline arrived — the user saw nothing, hit Enter thinking the script had hung, and PAM rejected the empty password with `Authentication failure`. The installer now runs `chsh` without piping (no indentation, but the prompt appears immediately), redirects stdin **and** stderr to `/dev/tty` so the prompt is guaranteed visible and readable even under `curl | bash`, and pre-announces "chsh will prompt for your login password below" so the user knows to expect it. The `/etc/shells` registration step also stops swallowing stderr (`2>/dev/null`) so any sudo prompt there is visible too.
+
 ## [2.1.1] - 2026-04-17
 
 ### Changed
