@@ -255,7 +255,7 @@ case "$OS_FAMILY" in
 
         # Install dependencies
         ui_branch "Installing packages via Homebrew..."
-        if ! brew install curl git zsh python3 bat sheldon starship 2>&1 | sed 's/^/      /' >&2; then
+        if ! brew install curl git zsh python3 bat eza sheldon starship 2>&1 | sed 's/^/      /' >&2; then
             ui_error_noexit "Some Homebrew packages failed to install"
             INSTALL_FAILED=true
         fi
@@ -289,6 +289,16 @@ case "$OS_FAMILY" in
                 INSTALL_FAILED=true
             fi
         fi
+
+        # Install eza (best-effort; only in apt on Ubuntu 24.04+ / Debian 13+)
+        if ! command -v eza >/dev/null 2>&1; then
+            ui_branch "Installing eza..."
+            if sudo apt-get install -y -qq eza 2>&1 | sed 's/^/      /' >&2; then
+                :
+            else
+                ui_warning "eza not available via apt on this release; ls aliases will fall back to plain ls (install manually from https://github.com/eza-community/eza to enable)"
+            fi
+        fi
         ;;
 
     fedora)
@@ -313,6 +323,16 @@ case "$OS_FAMILY" in
             if ! curl -fsSL https://starship.rs/install.sh | sh -s -- --yes 2>&1 | sed 's/^/      /' >&2; then
                 ui_error_noexit "Starship installation failed"
                 INSTALL_FAILED=true
+            fi
+        fi
+
+        # Install eza (best-effort; in dnf on Fedora 38+, may be absent on older RHEL-likes)
+        if ! command -v eza >/dev/null 2>&1; then
+            ui_branch "Installing eza..."
+            if sudo dnf install -y -q eza 2>&1 | sed 's/^/      /' >&2; then
+                :
+            else
+                ui_warning "eza not available via dnf on this release; ls aliases will fall back to plain ls (install manually from https://github.com/eza-community/eza to enable)"
             fi
         fi
         ;;
