@@ -13,10 +13,12 @@
 # 7. Installs the Franklin CLI via Python
 #
 # Flags:
-#   --non-interactive   Skip interactive prompts (use defaults)
+#   --non-interactive   Skip interactive prompts (install everything by default,
+#                       use the default MOTD color). Opt out of specific steps
+#                       with the --no-* flags below.
 #   --color NAME        Pre-select MOTD color (e.g., Cello, Terracotta)
-#   --with-claude       Install Claude Code (native installer) without prompting
-#   --no-claude         Skip Claude Code installation without prompting
+#   --with-claude       Install Claude Code even in interactive mode (no prompt)
+#   --no-claude         Skip Claude Code installation
 #   --no-chsh           Don't change the user's default login shell to zsh
 
 set -euo pipefail
@@ -134,6 +136,11 @@ ui_header "Configuring MOTD color"
 # Default color
 MOTD_COLOR="#607a97"  # Cello
 MOTD_COLOR_NAME="Cello"
+# Tracks whether the user actively chose the color (via --color or the
+# interactive picker) vs. silently got the default in non-interactive mode.
+# The post-install summary uses this to nudge non-interactive users toward
+# `franklin config --color <name>` so they don't miss that they're on default.
+COLOR_WAS_DEFAULTED=false
 
 # Handle preset color from --color flag. Accepts Title Case ("Mauve Earth"),
 # lowercase ("mauve earth"), and kebab-case ("mauve-earth") forms for any
@@ -214,6 +221,7 @@ elif [ -t 0 ] && [ "$NON_INTERACTIVE" = false ]; then
     esac
 else
     ui_branch "Non-interactive mode, using default color (Cello)"
+    COLOR_WAS_DEFAULTED=true
 fi
 
 # Save color to config
@@ -402,21 +410,24 @@ fi
 ui_success "mise ready"
 ui_section_end
 
-# --- Install Claude Code (optional) ---
-ui_header "Claude Code (optional)"
+# --- Install Claude Code ---
+ui_header "Claude Code"
 
-# Decide whether to install:
-#   CLAUDE_CHOICE set via --with-claude / --no-claude wins.
-#   Otherwise prompt interactively (default: yes).
-#   In non-interactive mode without a flag, skip.
+# Decision order:
+#   1. Already installed -> skip.
+#   2. --no-claude -> skip.
+#   3. --with-claude -> install without prompting.
+#   4. Interactive TTY -> prompt (default: yes).
+#   5. Non-interactive (no flag) -> install by default. Non-interactive means
+#      "install everything"; use --no-claude to opt out.
 if command -v claude >/dev/null 2>&1; then
     ui_branch "Claude Code already installed, skipping"
     CLAUDE_INSTALL=false
-elif [ "$CLAUDE_CHOICE" = "yes" ]; then
-    CLAUDE_INSTALL=true
 elif [ "$CLAUDE_CHOICE" = "no" ]; then
     ui_branch "Skipping Claude Code install (--no-claude)"
     CLAUDE_INSTALL=false
+elif [ "$CLAUDE_CHOICE" = "yes" ]; then
+    CLAUDE_INSTALL=true
 elif [ -t 0 ] && [ "$NON_INTERACTIVE" = false ]; then
     echo "" >&2
     echo "Claude Code is Anthropic's official CLI for Claude." >&2
@@ -428,14 +439,14 @@ elif [ -t 0 ] && [ "$NON_INTERACTIVE" = false ]; then
         *)         CLAUDE_INSTALL=true ;;
     esac
 else
-    ui_branch "Non-interactive mode, skipping Claude Code (use --with-claude to install)"
-    CLAUDE_INSTALL=false
+    ui_branch "Non-interactive mode: installing Claude Code by default (use --no-claude to skip)"
+    CLAUDE_INSTALL=true
 fi
 
 if [ "${CLAUDE_INSTALL:-false}" = true ]; then
     ui_branch "Installing Claude Code via native installer..."
     if ! curl -fsSL https://claude.ai/install.sh | bash 2>&1 | sed 's/^/  /' >&2; then
-        ui_error_noexit "Claude Code installer failed (non-fatal, rerun install.sh --with-claude later)"
+        ui_error_noexit "Claude Code installer failed (non-fatal, rerun install.sh later)"
     else
         ui_success "Claude Code installed"
     fi
@@ -626,3 +637,12 @@ fi
 echo "" >&2
 echo "  2. Verify installation with: franklin doctor" >&2
 echo "" >&2
+
+# MOTD color nudge: if the non-interactive path silently defaulted to Cello,
+# tell the user loudly so they don't miss that they can personalize it.
+if [ "$COLOR_WAS_DEFAULTED" = true ]; then
+    echo "  3. Your MOTD banner color is set to the default (Cello). Pick your own:" >&2
+    echo "     franklin config --color <name>   # clay, ember, sage, flamingo, mauve-earth, ..." >&2
+    echo "     (14 Campfire colors available; see README or run 'franklin config' for the picker)" >&2
+    echo "" >&2
+fi
