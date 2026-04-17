@@ -7,6 +7,8 @@ and the project aims to follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [2.1.2] - 2026-04-17
+
 ### Changed
 
 - **`install.sh` detects already-installed dependencies before shelling out to the package manager.** Previously every run issued the full `brew install …` / `apt-get update && apt-get install …` / `dnf install …` command, even on machines where git/curl/zsh/python3/bat were already present. On a re-run (or any non-fresh box) this is wasted work and noisy output. The installer now walks each core tool with `command -v` first, builds a `MISSING` list per platform, and only calls the package manager when something's actually needed. Special-cases: Debian's `bat` package installs the binary as `batcat` (either satisfies the check); `python3-venv` is a module detected via `python3 -c "import venv"`; `python3-pip` is detected via `pip3` / `python3 -m pip`. When `MISSING` is empty we skip `apt-get update` entirely, which is the biggest win on slow/metered connections (e.g. Raspberry Pi over Wi-Fi). Existing `eza` / `sheldon` / `starship` blocks on Debian/Fedora already had `command -v` guards and are unchanged.
