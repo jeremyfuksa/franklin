@@ -17,6 +17,7 @@
 #   --color NAME        Pre-select MOTD color (e.g., Cello, Terracotta)
 #   --with-claude       Install Claude Code (native installer) without prompting
 #   --no-claude         Skip Claude Code installation without prompting
+#   --no-chsh           Don't change the user's default login shell to zsh
 
 set -euo pipefail
 
@@ -31,6 +32,7 @@ VENV_DIR="${HOME}/.local/share/franklin/venv"
 NON_INTERACTIVE=false
 PRESET_COLOR=""
 CLAUDE_CHOICE=""  # "", "yes", or "no"
+CHSH_ENABLED=true
 
 while [ $# -gt 0 ]; do
     case "$1" in
@@ -54,9 +56,13 @@ while [ $# -gt 0 ]; do
             CLAUDE_CHOICE="no"
             shift
             ;;
+        --no-chsh)
+            CHSH_ENABLED=false
+            shift
+            ;;
         *)
             echo "ERROR: Unknown argument: $1" >&2
-            echo "Usage: install.sh [--non-interactive] [--color NAME] [--with-claude|--no-claude]" >&2
+            echo "Usage: install.sh [--non-interactive] [--color NAME] [--with-claude|--no-claude] [--no-chsh]" >&2
             exit 1
             ;;
     esac
@@ -539,14 +545,84 @@ ln -sf "${FRANKLIN_ROOT}/config/starship.toml" "$STARSHIP_CONFIG"
 ui_success "Starship config linked"
 ui_section_end
 
+# --- Set zsh as the default login shell ---
+# Without this, SSH sessions and new terminals will still land in whatever
+# shell was the default (bash on most Linux distros), meaning the Franklin
+# .zshrc never gets sourced. Opt out with --no-chsh.
+ui_header "Setting zsh as the default login shell"
+
+CHSH_CHANGED=false
+CHSH_SKIPPED_REASON=""
+
+_install_ensure_zsh_in_shells() {
+    local zsh_path="$1"
+    # /etc/shells exists on every supported OS; if the path is already there
+    # we don't need sudo.
+    if [ -f /etc/shells ] && grep -Fxq "$zsh_path" /etc/shells; then
+        return 0
+    fi
+    ui_branch "Registering $zsh_path in /etc/shells..."
+    if echo "$zsh_path" | sudo tee -a /etc/shells >/dev/null 2>&1; then
+        return 0
+    fi
+    return 1
+}
+
+if [ "$CHSH_ENABLED" != true ]; then
+    CHSH_SKIPPED_REASON="--no-chsh flag was passed"
+elif ! command -v zsh >/dev/null 2>&1; then
+    CHSH_SKIPPED_REASON="zsh is not on PATH (dependency install may have failed)"
+elif ! command -v chsh >/dev/null 2>&1; then
+    CHSH_SKIPPED_REASON="chsh is not available on this system"
+else
+    ZSH_PATH="$(command -v zsh)"
+    CURRENT_SHELL="${SHELL:-}"
+
+    if [ "$CURRENT_SHELL" = "$ZSH_PATH" ]; then
+        ui_branch "zsh is already the default shell ($ZSH_PATH)"
+    else
+        if _install_ensure_zsh_in_shells "$ZSH_PATH"; then
+            # chsh prompts for the user's password via PAM. When install.sh
+            # is launched through `curl | bash`, stdin is the pipe so the
+            # prompt can't read; redirecting from /dev/tty works around that
+            # in interactive SSH / terminal sessions. If /dev/tty isn't
+            # available (cron, systemd unit, etc.), skip.
+            if [ ! -c /dev/tty ]; then
+                CHSH_SKIPPED_REASON="no controlling TTY for chsh password prompt"
+            else
+                ui_branch "Changing default shell to $ZSH_PATH..."
+                if chsh -s "$ZSH_PATH" </dev/tty 2>&1 | sed 's/^/      /' >&2; then
+                    CHSH_CHANGED=true
+                else
+                    ui_warning "chsh failed. You can finish the change manually: chsh -s $ZSH_PATH"
+                    CHSH_SKIPPED_REASON="chsh invocation failed"
+                fi
+            fi
+        else
+            ui_warning "Could not register $ZSH_PATH in /etc/shells (sudo prompt may have been declined)"
+            CHSH_SKIPPED_REASON="zsh is not in /etc/shells"
+        fi
+    fi
+fi
+
+if [ "$CHSH_CHANGED" = true ]; then
+    ui_success "Default shell set to zsh (log out and back in for it to take effect)"
+elif [ -n "$CHSH_SKIPPED_REASON" ]; then
+    ui_warning "Did not change default shell: $CHSH_SKIPPED_REASON"
+fi
+ui_section_end
+
 # --- Post-Install Instructions ---
 ui_final_success "Franklin installation complete!"
 echo "" >&2
 echo "Next steps:" >&2
-echo "  1. Add Franklin to your PATH by adding this to your .zshrc (optional if you're using the Franklin .zshrc template):" >&2
-echo "     export PATH=\"${VENV_DIR}/bin:\$PATH\"" >&2
+if [ "$CHSH_CHANGED" = true ]; then
+    echo "  1. Log out and back in (or open a new terminal) so zsh becomes your login shell." >&2
+    echo "     For this session, run: exec zsh" >&2
+else
+    echo "  1. Restart your shell or run: exec zsh" >&2
+    echo "     To also make zsh your default shell: chsh -s \"$(command -v zsh 2>/dev/null || echo /usr/bin/zsh)\"" >&2
+fi
 echo "" >&2
-echo "  2. Restart your shell or run: exec zsh" >&2
-echo "" >&2
-echo "  3. Verify installation with: franklin doctor" >&2
+echo "  2. Verify installation with: franklin doctor" >&2
 echo "" >&2
