@@ -12,6 +12,7 @@ Franklin is a Zsh shell configuration system that provides a consistent, themed 
 franklin/
 ├── bin/franklin          # POSIX sh shim that invokes the Python CLI
 ├── config/
+│   ├── mise.toml         # mise-managed Node/Python versions
 │   ├── plugins.toml      # Sheldon plugin configuration
 │   └── starship.toml     # Starship prompt configuration
 ├── src/
@@ -72,11 +73,19 @@ franklin doctor
 pytest test/test_cli.py -v
 
 # Test installer (non-interactive)
-bash franklin/src/install.sh --non-interactive --color Cello
+# Accepts: --non-interactive / --color NAME / --with-claude / --no-claude
+# Color NAME is case- and separator-insensitive: "ember", "Ember", "mauve-earth", "Mauve Earth" all resolve.
+bash franklin/src/install.sh --non-interactive --color cello --no-claude
 
 # Test bootstrap
 bash franklin/src/bootstrap.sh --dir /tmp/franklin-test --ref main
 ```
+
+### Runtime managers bundled by install.sh
+
+- **mise** — manages Node and Python versions via `franklin/config/mise.toml` (symlinked to `~/.config/mise/config.toml`). Installed by `install.sh` if absent.
+- **eza** — modern `ls` replacement; installed via the platform package manager where available (macOS brew / apt 24.04+ / dnf 38+), best-effort with a graceful fallback to plain `ls` on older distros.
+- **Claude Code** — optional via `install.sh --with-claude`; uses Anthropic's native installer, no Node dependency.
 
 ## Code Style
 
@@ -94,7 +103,8 @@ bash franklin/src/bootstrap.sh --dir /tmp/franklin-test --ref main
 
 ### UI Conventions (Campfire)
 - **Hierarchy**: Headers (`⏺`) → Branches (`⎿`) → Logic (`∴`)
-- **Colors**: Error (red), Success (green), Warning (yellow), Info (blue)
+- **Colors**: Error (Flamingo), Success (Sage), Warning (Golden Amber), Info (Cello) — all pulled from Campfire semantic-500 values. Source of truth: `constants.py` (`UI_*_COLOR`) and `lib/ui.sh` (`COLOR_*`).
+- **MOTD palette**: `CAMPFIRE_COLORS` mirrors the Campfire signature palette — 14 names (Cello, Terracotta, Sage, Golden Amber, Flamingo, Blue Calx, Clay, Ember, Hay, Moss, Pine, Dusk, Mauve Earth, Stone) plus `Black Rock` as a legacy alias for Stone. Variants (`base`/`dark`/`light`) come from the upstream 11-step scales; only Blue Calx uses scale-100 for `light` because the info scale is compressed.
 - **Stream separation**: UI to stderr, machine-readable data to stdout
 - **TTY-aware**: Respect `NO_COLOR` and `FRANKLIN_NO_COLOR` env vars
 
