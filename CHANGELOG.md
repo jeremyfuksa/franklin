@@ -9,6 +9,8 @@ and the project aims to follow [Semantic Versioning](https://semver.org/).
 
 ### Added
 
+- **Expanded Campfire MOTD palette to 15 colors.** Previously the README advertised 14 Campfire signature names (`clay`, `ember`, `hay`, `moss`, `pine`, `dusk`, `mauve-earth`, `stone`, etc.) but the CLI only accepted 7 — selecting any of the other 8 via `franklin config --color ember` failed. Added `Clay`, `Ember`, `Hay`, `Moss`, `Pine`, `Dusk`, `Mauve Earth`, and `Stone` to `CAMPFIRE_COLORS`, each with `base`/`dark`/`light` variants derived from Campfire's signature palette (base = dark-mode swatch, light = light-mode swatch, dark = base darkened 18% in HSL to match the existing spread). `Black Rock` stays as an alias for `Stone` (same base hex) for backward compatibility.
+- **Case-insensitive / kebab-case color names.** `franklin config --color` and `install.sh --color` now accept `ember`, `Ember`, `EMBER`, `mauve-earth`, `Mauve_Earth`, `mauve earth`, etc. — anything that normalizes to a known palette key resolves to the canonical Title Case entry.
 - **`eza` as a modern `ls` replacement** (closes #1). Installed via Homebrew (macOS), apt (Ubuntu 24.04+ / Debian 13+), and dnf (Fedora 38+); best-effort on older distros with a warning and graceful fallback. Zshrc aliases `ls`/`ll`/`la`/`lh`/`l` to eza equivalents with Git status + icons when eza is present, and preserves plain-`ls` behaviour when it isn't. New `lt` alias for a two-level tree view.
 - **Claude Code install option** in `install.sh` via `--with-claude` / `--no-claude` flags (interactive prompt by default on TTY; skipped in non-interactive mode unless `--with-claude` is passed). Uses Anthropic's native installer (`https://claude.ai/install.sh`) so no Node dependency is required.
 

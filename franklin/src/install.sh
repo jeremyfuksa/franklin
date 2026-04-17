@@ -129,38 +129,32 @@ ui_header "Configuring MOTD color"
 MOTD_COLOR="#607a97"  # Cello
 MOTD_COLOR_NAME="Cello"
 
-# Handle preset color from --color flag (case for Bash 3 / macOS compatibility)
+# Handle preset color from --color flag. Accepts Title Case ("Mauve Earth"),
+# lowercase ("mauve earth"), and kebab-case ("mauve-earth") forms for any
+# Campfire color name. Hex codes (#rrggbb) pass through as custom.
 if [ -n "$PRESET_COLOR" ]; then
-    case "$PRESET_COLOR" in
-        Cello)
-            MOTD_COLOR="#607a97"; MOTD_COLOR_NAME="Cello"
-            ui_success "Using preset color: $MOTD_COLOR_NAME ($MOTD_COLOR)"
-            ;;
-        Terracotta)
-            MOTD_COLOR="#b87b6a"; MOTD_COLOR_NAME="Terracotta"
-            ui_success "Using preset color: $MOTD_COLOR_NAME ($MOTD_COLOR)"
-            ;;
-        "Black Rock")
-            MOTD_COLOR="#747b8a"; MOTD_COLOR_NAME="Black Rock"
-            ui_success "Using preset color: $MOTD_COLOR_NAME ($MOTD_COLOR)"
-            ;;
-        Sage)
-            MOTD_COLOR="#8fb14b"; MOTD_COLOR_NAME="Sage"
-            ui_success "Using preset color: $MOTD_COLOR_NAME ($MOTD_COLOR)"
-            ;;
-        "Golden Amber")
-            MOTD_COLOR="#f9c574"; MOTD_COLOR_NAME="Golden Amber"
-            ui_success "Using preset color: $MOTD_COLOR_NAME ($MOTD_COLOR)"
-            ;;
-        Flamingo)
-            MOTD_COLOR="#e75351"; MOTD_COLOR_NAME="Flamingo"
-            ui_success "Using preset color: $MOTD_COLOR_NAME ($MOTD_COLOR)"
-            ;;
-        "Blue Calx")
-            MOTD_COLOR="#b8c5d9"; MOTD_COLOR_NAME="Blue Calx"
-            ui_success "Using preset color: $MOTD_COLOR_NAME ($MOTD_COLOR)"
-            ;;
+    # Normalize: lowercase, turn -/_ into spaces, collapse whitespace.
+    # Note: put '-' at the end of the tr set so it isn't parsed as a flag.
+    PRESET_COLOR_NORM="$(printf '%s' "$PRESET_COLOR" | tr '[:upper:]' '[:lower:]' | tr '_-' '  ' | xargs)"
+    PRESET_MATCHED=true
+    case "$PRESET_COLOR_NORM" in
+        cello)         MOTD_COLOR="#607a97"; MOTD_COLOR_NAME="Cello" ;;
+        terracotta)    MOTD_COLOR="#b87b6a"; MOTD_COLOR_NAME="Terracotta" ;;
+        "black rock")  MOTD_COLOR="#747b8a"; MOTD_COLOR_NAME="Black Rock" ;;
+        sage)          MOTD_COLOR="#8fb14b"; MOTD_COLOR_NAME="Sage" ;;
+        "golden amber") MOTD_COLOR="#f9c574"; MOTD_COLOR_NAME="Golden Amber" ;;
+        flamingo)      MOTD_COLOR="#e75351"; MOTD_COLOR_NAME="Flamingo" ;;
+        "blue calx")   MOTD_COLOR="#b8c5d9"; MOTD_COLOR_NAME="Blue Calx" ;;
+        clay)          MOTD_COLOR="#c89c8d"; MOTD_COLOR_NAME="Clay" ;;
+        ember)         MOTD_COLOR="#d97706"; MOTD_COLOR_NAME="Ember" ;;
+        hay)           MOTD_COLOR="#d4b86a"; MOTD_COLOR_NAME="Hay" ;;
+        moss)          MOTD_COLOR="#5a6f2d"; MOTD_COLOR_NAME="Moss" ;;
+        pine)          MOTD_COLOR="#4a7c7e"; MOTD_COLOR_NAME="Pine" ;;
+        dusk)          MOTD_COLOR="#8b7a9f"; MOTD_COLOR_NAME="Dusk" ;;
+        "mauve earth") MOTD_COLOR="#9b6b7f"; MOTD_COLOR_NAME="Mauve Earth" ;;
+        stone)         MOTD_COLOR="#747b8a"; MOTD_COLOR_NAME="Stone" ;;
         *)
+            PRESET_MATCHED=false
             if [[ "$PRESET_COLOR" =~ ^#[0-9A-Fa-f]{6}$ ]]; then
                 MOTD_COLOR="$PRESET_COLOR"
                 MOTD_COLOR_NAME="custom"
@@ -170,6 +164,9 @@ if [ -n "$PRESET_COLOR" ]; then
             fi
             ;;
     esac
+    if [ "$PRESET_MATCHED" = true ]; then
+        ui_success "Using preset color: $MOTD_COLOR_NAME ($MOTD_COLOR)"
+    fi
 # Interactive mode if TTY and not --non-interactive
 elif [ -t 0 ] && [ "$NON_INTERACTIVE" = false ]; then
     echo "" >&2
