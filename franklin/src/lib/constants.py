@@ -51,6 +51,53 @@ CAMPFIRE_COLORS = {
         "dark": "#7b8da8",   # H: 218° L: 58% (shifts periwinkle, Δ-20%)
         "light": "#e5edf5",  # H: 206° L: 93% (shifts cyan-blue, Δ+15%)
     },
+    # --- Signature accent colors (from Campfire's signature palette) ---
+    # base  = Campfire dark-mode swatch (saturated, reads well on terminal bg)
+    # light = Campfire light-mode swatch (pastel)
+    # dark  = base darkened ~18% in HSL L (matches spread of entries above)
+    "Clay": {
+        "base":  "#c89c8d",
+        "dark":  "#a86751",
+        "light": "#e5beb0",
+    },
+    "Ember": {
+        "base":  "#d97706",
+        "dark":  "#804604",
+        "light": "#f5a855",
+    },
+    "Hay": {
+        "base":  "#d4b86a",
+        "dark":  "#b08f33",
+        "light": "#f2d88f",
+    },
+    "Moss": {
+        "base":  "#5a6f2d",
+        "dark":  "#252e13",
+        "light": "#88a055",
+    },
+    "Pine": {
+        "base":  "#4a7c7e",
+        "dark":  "#284344",
+        "light": "#75acaf",
+    },
+    "Dusk": {
+        "base":  "#8b7a9f",
+        "dark":  "#5d4f6e",
+        "light": "#b8a0cc",
+    },
+    "Mauve Earth": {
+        "base":  "#9b6b7f",
+        "dark":  "#664552",
+        "light": "#c898ad",
+    },
+    # Stone is Campfire's signature name for the same neutral gray-blue Franklin
+    # historically called "Black Rock". Both entries exist so legacy configs
+    # keep working; Stone is the canonical Campfire name going forward.
+    "Stone": {
+        "base":  "#747b8a",
+        "dark":  "#4a4f58",
+        "light": "#a0a8b5",
+    },
 }
 
 # Default color

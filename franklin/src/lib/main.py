@@ -549,8 +549,16 @@ def config(
 
     # Flag-driven (non-interactive) path
     if color:
-        if color in CAMPFIRE_COLORS:
-            save_color(color, CAMPFIRE_COLORS[color]["base"])
+        # Accept canonical title-case ("Mauve Earth"), lowercase ("mauve earth"),
+        # and kebab-case ("mauve-earth") for any CAMPFIRE_COLORS key.
+        def _norm(name: str) -> str:
+            return name.lower().replace("-", " ").replace("_", " ").strip()
+
+        lookup = {_norm(k): k for k in CAMPFIRE_COLORS}
+        normalized = _norm(color)
+        if normalized in lookup:
+            canonical = lookup[normalized]
+            save_color(canonical, CAMPFIRE_COLORS[canonical]["base"])
             return
         import re
 

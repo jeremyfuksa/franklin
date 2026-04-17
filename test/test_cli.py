@@ -164,19 +164,42 @@ class TestConstants:
     def test_campfire_colors_has_expected_colors(self):
         """Test that CAMPFIRE_COLORS contains expected entries."""
         from lib.constants import CAMPFIRE_COLORS, DEFAULT_CAMPFIRE_COLOR
-        
+
         assert "Cello" in CAMPFIRE_COLORS
         assert "Terracotta" in CAMPFIRE_COLORS
         assert DEFAULT_CAMPFIRE_COLOR in CAMPFIRE_COLORS
 
+    def test_campfire_colors_includes_full_signature_palette(self):
+        """Every name advertised in the README must resolve in CAMPFIRE_COLORS."""
+        from lib.constants import CAMPFIRE_COLORS
+
+        signature_names = [
+            "Clay", "Flamingo", "Terracotta", "Ember", "Golden Amber", "Hay",
+            "Sage", "Moss", "Pine", "Cello", "Blue Calx", "Dusk",
+            "Mauve Earth", "Stone",
+        ]
+        for name in signature_names:
+            assert name in CAMPFIRE_COLORS, f"{name} missing from CAMPFIRE_COLORS"
+
     def test_campfire_colors_have_variants(self):
         """Test that each color has base/dark/light variants."""
         from lib.constants import CAMPFIRE_COLORS
-        
+
         for name, colors in CAMPFIRE_COLORS.items():
             assert "base" in colors, f"{name} missing 'base'"
             assert "dark" in colors, f"{name} missing 'dark'"
             assert "light" in colors, f"{name} missing 'light'"
+
+    def test_campfire_color_variants_are_valid_hex(self):
+        """Every base/dark/light value should be a 7-char #rrggbb string."""
+        import re
+        from lib.constants import CAMPFIRE_COLORS
+
+        hex_re = re.compile(r"^#[0-9a-fA-F]{6}$")
+        for name, colors in CAMPFIRE_COLORS.items():
+            for variant in ("base", "dark", "light"):
+                value = colors[variant]
+                assert hex_re.match(value), f"{name}.{variant}={value!r} is not valid hex"
 
     def test_glyphs_are_defined(self):
         """Test that all glyphs are defined."""
