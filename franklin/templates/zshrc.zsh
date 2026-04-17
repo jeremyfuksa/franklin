@@ -127,6 +127,19 @@ alias la="ls -A"
 alias lh="ls -lh"
 alias l="ls -CF"
 
+# --- eza (enhanced ls) ---
+# If eza is installed, override the ls aliases above with eza equivalents.
+# Icons render correctly when a Nerd Font is active (Franklin's MOTD already
+# requires one); --icons=auto degrades gracefully on non-Nerd-Font terminals.
+if command -v eza >/dev/null 2>&1; then
+    alias ls="eza --group-directories-first --icons=auto"
+    alias ll="eza -l  --group-directories-first --icons=auto --git"
+    alias la="eza -la --group-directories-first --icons=auto --git"
+    alias lh="eza -lh --group-directories-first --icons=auto"
+    alias l="eza -CF  --group-directories-first --icons=auto"
+    alias lt="eza --tree --level=2 --icons=auto"
+fi
+
 # Navigation shortcuts
 alias ..="cd .."
 alias ...="cd ../.."

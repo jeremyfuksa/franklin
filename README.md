@@ -48,6 +48,7 @@ bash install.sh
 | Zsh + Sheldon | Franklin keeps a tidy `.zshrc` and installs anything missing. |
 | Starship prompt | Configured via `starship.toml`; auto-enabled for a snappy shell. |
 | bat / batcat | Syntax-highlighted `cat` replacement; Franklin aliases `cat` ⇒ `bat`. |
+| eza | Modern `ls` replacement with Git status, icons, and tree view. Franklin aliases `ls`/`ll`/`la`/`l` ⇒ `eza` when installed; adds `lt` for a quick tree. Falls back to plain `ls` on older distros where `eza` isn't packaged. |
 | fzf, ripgrep | Included on Linux for quick fuzzy search and grepping. |
 | mise + Node/Python LTS | Runtime versions managed via `mise.toml`; installed by `install.sh`. |
 | MOTD dashboard | Franklin Campfire banner with host/OS/disk/memory details. Toggle with `FRANKLIN_ENABLE_MOTD` / `FRANKLIN_SHOW_MOTD_ON_LOGIN`. |

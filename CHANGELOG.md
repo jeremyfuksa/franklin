@@ -9,6 +9,7 @@ and the project aims to follow [Semantic Versioning](https://semver.org/).
 
 ### Added
 
+- **`eza` as a modern `ls` replacement** (closes #1). Installed via Homebrew (macOS), apt (Ubuntu 24.04+ / Debian 13+), and dnf (Fedora 38+); best-effort on older distros with a warning and graceful fallback. Zshrc aliases `ls`/`ll`/`la`/`lh`/`l` to eza equivalents with Git status + icons when eza is present, and preserves plain-`ls` behaviour when it isn't. New `lt` alias for a two-level tree view.
 - **Claude Code install option** in `install.sh` via `--with-claude` / `--no-claude` flags (interactive prompt by default on TTY; skipped in non-interactive mode unless `--with-claude` is passed). Uses Anthropic's native installer (`https://claude.ai/install.sh`) so no Node dependency is required.
 
 ### Fixed
