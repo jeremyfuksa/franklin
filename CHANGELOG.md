@@ -7,6 +7,16 @@ and the project aims to follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Added
+
+- **Claude Code install option** in `install.sh` via `--with-claude` / `--no-claude` flags (interactive prompt by default on TTY; skipped in non-interactive mode unless `--with-claude` is passed). Uses Anthropic's native installer (`https://claude.ai/install.sh`) so no Node dependency is required.
+
+### Fixed
+
+- **mise runtime setup on fresh installs:** `install.sh` now ensures `~/.local/bin` is on `PATH` after `curl | sh` so the follow-up `mise install` step is actually invoked on systems where that directory wasn't already exported (common on macOS).
+- **mise install failures** are no longer swallowed as non-fatal warnings; they now surface via `ui_error_noexit` and set `INSTALL_FAILED` so the final install summary reflects them.
+- **`mise.toml`** now pins `python = "latest"` instead of the invalid `"lts"` alias (Python has no LTS designation; the prior value caused `mise install` to fail to resolve a Python version).
+
 ## [2.0.5] - 2025-02-27
 
 ### Fixed
