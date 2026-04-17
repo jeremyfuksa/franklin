@@ -10,6 +10,7 @@ and the project aims to follow [Semantic Versioning](https://semver.org/).
 ### Changed
 
 - **`--non-interactive` now means "install everything" instead of "skip anything optional".** Previously, running `install.sh --non-interactive` silently skipped Claude Code — you had to add `--with-claude` to get it. That made the flag awkward: a user automating a fresh install had to remember every opt-in flag just to get the same result an interactive TTY would produce by default. The new model is: non-interactive mode installs every optional piece and picks the default MOTD color; if you want to skip something, use the corresponding `--no-*` flag (`--no-claude`, `--no-chsh`). `--with-claude` still works for forcing Claude Code in interactive mode without being prompted. Automation scripts that previously used `--non-interactive --with-claude` can drop `--with-claude`; scripts that relied on the old "skip Claude" default need to add `--no-claude`.
+- **Post-install now nudges you about the MOTD color when it defaulted.** When the non-interactive path silently falls back to the default Cello banner, the final "Next steps" block explicitly shows `franklin config --color <name>` as step 3 with example names, so users notice they can personalize it instead of silently accepting the default forever.
 
 ### Fixed
 

@@ -136,6 +136,11 @@ ui_header "Configuring MOTD color"
 # Default color
 MOTD_COLOR="#607a97"  # Cello
 MOTD_COLOR_NAME="Cello"
+# Tracks whether the user actively chose the color (via --color or the
+# interactive picker) vs. silently got the default in non-interactive mode.
+# The post-install summary uses this to nudge non-interactive users toward
+# `franklin config --color <name>` so they don't miss that they're on default.
+COLOR_WAS_DEFAULTED=false
 
 # Handle preset color from --color flag. Accepts Title Case ("Mauve Earth"),
 # lowercase ("mauve earth"), and kebab-case ("mauve-earth") forms for any
@@ -216,6 +221,7 @@ elif [ -t 0 ] && [ "$NON_INTERACTIVE" = false ]; then
     esac
 else
     ui_branch "Non-interactive mode, using default color (Cello)"
+    COLOR_WAS_DEFAULTED=true
 fi
 
 # Save color to config
@@ -631,3 +637,12 @@ fi
 echo "" >&2
 echo "  2. Verify installation with: franklin doctor" >&2
 echo "" >&2
+
+# MOTD color nudge: if the non-interactive path silently defaulted to Cello,
+# tell the user loudly so they don't miss that they can personalize it.
+if [ "$COLOR_WAS_DEFAULTED" = true ]; then
+    echo "  3. Your MOTD banner color is set to the default (Cello). Pick your own:" >&2
+    echo "     franklin config --color <name>   # clay, ember, sage, flamingo, mauve-earth, ..." >&2
+    echo "     (14 Campfire colors available; see README or run 'franklin config' for the picker)" >&2
+    echo "" >&2
+fi
