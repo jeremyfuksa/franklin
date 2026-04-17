@@ -100,10 +100,12 @@ The prompt is powered by [Starship](https://starship.rs/). You can customize it 
 
 ### Advanced Configuration
 
-- **Claude Code**: The installer can optionally install [Claude Code](https://docs.anthropic.com/en/docs/claude-code) via Anthropic's native installer (no Node dependency). On a TTY, `install.sh` prompts you; in non-interactive mode it skips unless `--with-claude` is passed. Use `--no-claude` to skip the prompt entirely. Example:
+- **Claude Code**: The installer installs [Claude Code](https://docs.anthropic.com/en/docs/claude-code) via Anthropic's native installer (no Node dependency). On a TTY, `install.sh` prompts you (default: yes); in non-interactive mode it installs by default. Use `--no-claude` to skip. Example of skipping:
   ```bash
-  bash install.sh --non-interactive --color cello --with-claude
+  bash install.sh --non-interactive --color cello --no-claude
   ```
+
+- **Non-interactive philosophy**: `--non-interactive` means "install everything and pick sensible defaults, no prompts." If you want to skip an optional piece, use the corresponding `--no-*` flag (`--no-claude`, `--no-chsh`, etc.). The `--with-claude` flag still exists for interactive runs where you want to install Claude Code without being prompted.
 
 - **Backup Location**: To change where Franklin stores backups of your old dotfiles, set the `FRANKLIN_BACKUP_DIR` environment variable *before* running the installer.
   ```bash
