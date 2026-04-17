@@ -9,6 +9,7 @@ and the project aims to follow [Semantic Versioning](https://semver.org/).
 
 ### Fixed
 
+- **`install.sh` now actually makes zsh the default login shell.** This was a long-standing bug: the installer symlinked `.zshrc` and printed `Restart your shell or run: exec zsh` in the post-install steps but never ran `chsh`, so users logging back in via SSH would land in bash (which doesn't source `.zshrc`) and see none of their Franklin setup. The installer now ensures `zsh` is registered in `/etc/shells`, runs `chsh -s $(command -v zsh)` for the current user (reading the password prompt from `/dev/tty` so it works under `curl | bash` too), and reports whether the change succeeded. Opt out with the new `--no-chsh` flag.
 - **`bootstrap.sh` auto-installs missing prerequisites.** Previously, on a fresh machine without `git` (or `curl` / `python3`), the bootstrapper would print `✗ git is required but not found` and bail out, leaving the user to go install the tool by hand before retrying. Bootstrap now detects the platform manager (`brew` on macOS, `apt-get` or `dnf` on Linux) and installs missing prerequisites automatically. On Debian/Ubuntu it also pulls `python3-venv` if the `venv` module isn't importable, so `install.sh` can create its virtual environment later. macOS systems without Homebrew get a clear message with both `xcode-select --install` and the Homebrew URL.
 
 ## [2.1.0] - 2026-04-17
