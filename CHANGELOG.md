@@ -7,6 +7,10 @@ and the project aims to follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Fixed
+
+- **`bootstrap.sh` auto-installs missing prerequisites.** Previously, on a fresh machine without `git` (or `curl` / `python3`), the bootstrapper would print `✗ git is required but not found` and bail out, leaving the user to go install the tool by hand before retrying. Bootstrap now detects the platform manager (`brew` on macOS, `apt-get` or `dnf` on Linux) and installs missing prerequisites automatically. On Debian/Ubuntu it also pulls `python3-venv` if the `venv` module isn't importable, so `install.sh` can create its virtual environment later. macOS systems without Homebrew get a clear message with both `xcode-select --install` and the Homebrew URL.
+
 ## [2.1.0] - 2026-04-17
 
 ### Changed

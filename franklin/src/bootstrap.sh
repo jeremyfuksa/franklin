@@ -94,16 +94,77 @@ case "$OS" in
         ;;
 esac
 
-# Check for required commands
-for cmd in git curl; do
-    if ! command -v "$cmd" >/dev/null 2>&1; then
-        ui_error "$cmd is required but not found. Please install it and try again."
-    fi
-done
+# --- Auto-install helper ---
+# Attempts to install a missing package via the detected platform's package
+# manager. On macOS, requires Homebrew (and guides toward xcode-select if
+# absent). On Linux, uses apt-get or dnf. Any failure is reported but passed
+# back to the caller via non-zero return so the preflight loop can decide.
+_bootstrap_install_pkg() {
+    local pkg="$1"
+    case "$OS" in
+        Darwin)
+            if command -v brew >/dev/null 2>&1; then
+                ui_branch "Installing $pkg via Homebrew..."
+                brew install "$pkg" 2>&1 | sed 's/^/    /' >&2
+                return $?
+            else
+                ui_branch "Homebrew not found. Franklin needs one of:"
+                ui_branch "  - Xcode Command Line Tools: xcode-select --install  (provides git + curl)"
+                ui_branch "  - Homebrew:                 https://brew.sh"
+                return 1
+            fi
+            ;;
+        Linux)
+            if command -v apt-get >/dev/null 2>&1; then
+                ui_branch "Installing $pkg via apt..."
+                sudo apt-get update -qq 2>&1 | sed 's/^/    /' >&2
+                sudo apt-get install -y -qq "$pkg" 2>&1 | sed 's/^/    /' >&2
+                return $?
+            elif command -v dnf >/dev/null 2>&1; then
+                ui_branch "Installing $pkg via dnf..."
+                sudo dnf install -y -q "$pkg" 2>&1 | sed 's/^/    /' >&2
+                return $?
+            else
+                ui_branch "No supported package manager found (apt-get / dnf)."
+                return 1
+            fi
+            ;;
+        *)
+            return 1
+            ;;
+    esac
+}
 
-# Check for Python 3
-if ! command -v python3 >/dev/null 2>&1; then
-    ui_error "Python 3 is required but not found. Please install Python 3 and try again."
+# Check for required commands; auto-install if missing. On Debian/Ubuntu
+# python3 also needs the python3-venv package so install.sh can create the
+# Franklin venv later.
+_bootstrap_ensure() {
+    local cmd="$1"
+    local pkg="${2:-$1}"
+    if command -v "$cmd" >/dev/null 2>&1; then
+        return 0
+    fi
+    ui_branch "$cmd not found; attempting auto-install..."
+    if _bootstrap_install_pkg "$pkg" && command -v "$cmd" >/dev/null 2>&1; then
+        ui_branch "$cmd installed"
+        return 0
+    fi
+    ui_error "Failed to install $cmd automatically. Please install it manually and rerun."
+}
+
+_bootstrap_ensure git
+_bootstrap_ensure curl
+_bootstrap_ensure python3
+
+# Debian/Ubuntu ships `python3-venv` separately from `python3`; install.sh
+# will need it. Best-effort: if apt is available and the venv module isn't
+# importable, pull python3-venv in.
+if [ "$OS" = "Linux" ] && command -v apt-get >/dev/null 2>&1; then
+    if ! python3 -c "import venv" >/dev/null 2>&1; then
+        ui_branch "python3-venv module not available; installing..."
+        sudo apt-get install -y -qq python3-venv 2>&1 | sed 's/^/    /' >&2 || \
+            ui_branch "Could not install python3-venv; install.sh may need to do it later."
+    fi
 fi
 
 ui_success "Pre-flight checks passed"
