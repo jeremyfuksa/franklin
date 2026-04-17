@@ -18,10 +18,11 @@ GLYPH_WARNING="⚠"
 GLYPH_ERROR="✗"
 
 # --- Colors (ANSI 24-bit) ---
-COLOR_ERROR="\033[38;2;191;97;106m"    # #bf616a
-COLOR_SUCCESS="\033[38;2;163;190;140m"  # #a3be8c
-COLOR_INFO="\033[38;2;136;192;208m"     # #88c0d0
-COLOR_WARNING="\033[38;2;235;203;139m"  # #ebcb8b
+# Aligned with Campfire semantic scales (mirrors UI_*_COLOR in constants.py).
+COLOR_ERROR="\033[38;2;231;83;81m"      # #e75351 (danger-500 / Flamingo family)
+COLOR_SUCCESS="\033[38;2;143;177;75m"   # #8fb14b (success-500 / Sage family)
+COLOR_INFO="\033[38;2;96;122;151m"      # #607a97 (primary-500 / Cello family)
+COLOR_WARNING="\033[38;2;249;197;116m"  # #f9c574 (warning-500 / Golden Amber family)
 COLOR_RESET="\033[0m"
 
 # --- TTY Detection ---

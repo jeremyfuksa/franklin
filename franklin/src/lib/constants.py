@@ -13,43 +13,50 @@ CONFIG_FILE = CONFIG_DIR / "config.env"
 BACKUP_DIR = FRANKLIN_ROOT / "backups"
 
 # --- Campfire Color Palette (for MOTD) ---
-# These are the signature colors users can select for their MOTD banner
-# Each color has dark and light variants for visual hierarchy
+# These are the signature colors users can select for their MOTD banner.
+# Each color has base/dark/light variants for visual hierarchy.
+#
+# Colors with a Campfire semantic scale (primary/secondary/neutral/success/
+# warning/danger/info) use `base`=scale-500, `dark`=scale-700, `light`=scale-300.
+# (Blue Calx / info uses `light`=scale-100 because the info scale is unusually
+# compressed at the 300-500 end — scale-300 would be indistinguishable from
+# base.) The 8 signature-only accent colors use Campfire's dark-mode swatch as
+# base, its light-mode swatch as light, and a -18% HSL L shift for dark.
 CAMPFIRE_COLORS = {
     "Cello": {
-        "base": "#607a97",   # H: 210° L: 48% (blue-gray)
-        "dark": "#3d4f63",   # H: 213° L: 32% (shifts cooler/bluer, Δ-16%)
-        "light": "#a3bdd4",  # H: 207° L: 73% (shifts warmer/cyan, Δ+25%)
+        "base":  "#607a97",  # primary-500
+        "dark":  "#3e4f66",  # primary-700
+        "light": "#acbbcc",  # primary-300
     },
     "Terracotta": {
-        "base": "#b87b6a",   # H: 12° L: 57% (warm terracotta)
-        "dark": "#7a4a3e",   # H: 8° L: 38% (shifts toward brick red, Δ-19%)
-        "light": "#e8b5a5",  # H: 16° L: 77% (shifts peachy-pink, Δ+20%)
+        "base":  "#b87b6a",  # secondary-500
+        "dark":  "#8d5443",  # secondary-700
+        "light": "#dbbdb3",  # secondary-300
     },
     "Black Rock": {
-        "base": "#747b8a",   # H: 220° L: 51% (cool gray-blue)
-        "dark": "#494f5c",   # H: 225° L: 33% (shifts cooler/bluer, Δ-18%)
-        "light": "#a8b0be",  # H: 215° L: 71% (shifts warmer/steel, Δ+20%)
+        "base":  "#747b8a",  # neutral-500
+        "dark":  "#4d515c",  # neutral-700
+        "light": "#b8bcc5",  # neutral-300
     },
     "Sage": {
-        "base": "#8fb14b",   # H: 75° L: 50% (yellow-green)
-        "dark": "#5a6e2f",   # H: 72° L: 32% (shifts toward olive, Δ-18%)
-        "light": "#c5e088",  # H: 78° L: 73% (shifts toward lime, Δ+23%)
+        "base":  "#8fb14b",  # success-500
+        "dark":  "#5a6f2d",  # success-700
+        "light": "#b1d27e",  # success-300
     },
     "Golden Amber": {
-        "base": "#f9c574",   # H: 40° L: 72% (golden yellow)
-        "dark": "#b8873e",   # H: 35° L: 52% (shifts amber-orange, Δ-20%)
-        "light": "#ffe0b0",  # H: 45° L: 90% (shifts toward cream, Δ+18%)
+        "base":  "#f9c574",  # warning-500
+        "dark":  "#d97706",  # warning-700
+        "light": "#fddfa0",  # warning-300
     },
     "Flamingo": {
-        "base": "#e75351",   # H: 1° L: 60% (coral-red)
-        "dark": "#a12f2d",   # H: 0° L: 41% (shifts deep burgundy, Δ-19%)
-        "light": "#ff9d9b",  # H: 359° L: 80% (shifts pink-coral, Δ+20%)
+        "base":  "#e75351",  # danger-500
+        "dark":  "#be2b29",  # danger-700
+        "light": "#f8a5a4",  # danger-300
     },
     "Blue Calx": {
-        "base": "#b8c5d9",   # H: 212° L: 78% (powder blue)
-        "dark": "#7b8da8",   # H: 218° L: 58% (shifts periwinkle, Δ-20%)
-        "light": "#e5edf5",  # H: 206° L: 93% (shifts cyan-blue, Δ+15%)
+        "base":  "#b8c5d9",  # info-500
+        "dark":  "#8899b3",  # info-700
+        "light": "#e8eef6",  # info-100 (info scale is compressed; 300 ≈ base)
     },
     # --- Signature accent colors (from Campfire's signature palette) ---
     # base  = Campfire dark-mode swatch (saturated, reads well on terminal bg)
@@ -104,11 +111,12 @@ CAMPFIRE_COLORS = {
 DEFAULT_CAMPFIRE_COLOR = "Cello"
 
 # --- UI Chrome Colors (for CLI output, not MOTD) ---
-# These are used for the UI helpers in ui.py
-UI_ERROR_COLOR = "#bf616a"  # Red for errors
-UI_SUCCESS_COLOR = "#a3be8c"  # Green for success
-UI_INFO_COLOR = "#88c0d0"  # Blue for info
-UI_WARNING_COLOR = "#ebcb8b"  # Yellow for warnings
+# These are used for the UI helpers in ui.py. Aligned with Campfire's semantic
+# scales so install/update chrome shares the MOTD banner's visual language.
+UI_ERROR_COLOR = "#e75351"    # danger-500 (Flamingo family)
+UI_SUCCESS_COLOR = "#8fb14b"  # success-500 (Sage family)
+UI_INFO_COLOR = "#607a97"     # primary-500 (Cello family) — info-500 is too pale for chrome
+UI_WARNING_COLOR = "#f9c574"  # warning-500 (Golden Amber family)
 
 # --- Glyph Dictionary ---
 GLYPH_ACTION = "⏺"

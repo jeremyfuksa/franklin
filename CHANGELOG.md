@@ -7,6 +7,11 @@ and the project aims to follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Changed
+
+- **Campfire palette aligned with upstream scales.** The 7 colors in `CAMPFIRE_COLORS` that correspond to Campfire semantic scales (Cello, Terracotta, Black Rock, Sage, Golden Amber, Flamingo, Blue Calx) now pull `dark`/`light` variants directly from Campfire's 11-step scales (`dark` = scale-700, `light` = scale-300, with Blue Calx using scale-100 since the info scale is compressed at the 300-500 end). Replaces hand-rolled HSL shifts, removes six stale "Δ-xx%" comments, and ensures the Franklin MOTD shares its hierarchy with the canonical Campfire design tokens. No user-visible config change is required — `MOTD_COLOR` / `MOTD_COLOR_NAME` keys continue to work.
+- **CLI chrome colors moved from Nord to Campfire semantics.** `UI_ERROR_COLOR`, `UI_SUCCESS_COLOR`, `UI_INFO_COLOR`, and `UI_WARNING_COLOR` in `constants.py` — plus their ANSI counterparts in `lib/ui.sh` — now map to Campfire's danger/success/primary/warning 500 values instead of Nord's red/green/blue/yellow. The result is that installer/update log chrome shares the same visual language as the MOTD banner. (Primary-500 is used for info since Campfire's info-500 is too pale to read as chrome on a terminal background.)
+
 ### Added
 
 - **Expanded Campfire MOTD palette to 15 colors.** Previously the README advertised 14 Campfire signature names (`clay`, `ember`, `hay`, `moss`, `pine`, `dusk`, `mauve-earth`, `stone`, etc.) but the CLI only accepted 7 — selecting any of the other 8 via `franklin config --color ember` failed. Added `Clay`, `Ember`, `Hay`, `Moss`, `Pine`, `Dusk`, `Mauve Earth`, and `Stone` to `CAMPFIRE_COLORS`, each with `base`/`dark`/`light` variants derived from Campfire's signature palette (base = dark-mode swatch, light = light-mode swatch, dark = base darkened 18% in HSL to match the existing spread). `Black Rock` stays as an alias for `Stone` (same base hex) for backward compatibility.
