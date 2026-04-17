@@ -246,6 +246,15 @@ ui_header "Installing dependencies"
 
 INSTALL_FAILED=false
 
+# Detection helper. Appends $2 (package name) to MISSING if $1 (binary) isn't
+# on PATH. Keeps each per-platform block readable and lets us skip the package
+# manager entirely on a re-run when everything's already installed.
+_pkg_need() {
+    if ! command -v "$1" >/dev/null 2>&1; then
+        MISSING+=("$2")
+    fi
+}
+
 case "$OS_FAMILY" in
     macos)
         # Check for Homebrew and add to PATH if needed
@@ -264,23 +273,59 @@ case "$OS_FAMILY" in
             fi
         fi
 
-        # Install dependencies
-        ui_branch "Installing packages via Homebrew..."
-        if ! brew install curl git zsh python3 bat eza sheldon starship 2>&1 | sed 's/^/      /' >&2; then
-            ui_error_noexit "Some Homebrew packages failed to install"
-            INSTALL_FAILED=true
+        MISSING=()
+        _pkg_need curl     curl
+        _pkg_need git      git
+        _pkg_need zsh      zsh
+        _pkg_need python3  python3
+        _pkg_need bat      bat
+        _pkg_need eza      eza
+        _pkg_need sheldon  sheldon
+        _pkg_need starship starship
+
+        if [ ${#MISSING[@]} -eq 0 ]; then
+            ui_branch "All Homebrew packages already installed, skipping brew install"
+        else
+            ui_branch "Installing via Homebrew: ${MISSING[*]}"
+            if ! brew install "${MISSING[@]}" 2>&1 | sed 's/^/      /' >&2; then
+                ui_error_noexit "Some Homebrew packages failed to install"
+                INSTALL_FAILED=true
+            fi
         fi
         ;;
 
     debian)
-        ui_branch "Installing packages via apt..."
-        if ! sudo apt-get update -qq 2>&1 | sed 's/^/      /' >&2; then
-            ui_error_noexit "apt-get update failed"
-            INSTALL_FAILED=true
+        MISSING=()
+        _pkg_need curl    curl
+        _pkg_need git     git
+        _pkg_need zsh     zsh
+        _pkg_need python3 python3
+        # python3-venv ships as a module, no binary of its own
+        if ! python3 -c "import venv" >/dev/null 2>&1; then
+            MISSING+=(python3-venv)
         fi
-        if ! sudo apt-get install -y -qq curl git zsh python3 python3-venv python3-pip bat 2>&1 | sed 's/^/      /' >&2; then
-            ui_error_noexit "Some apt packages failed to install"
-            INSTALL_FAILED=true
+        # python3-pip provides `pip3` and/or `python3 -m pip`
+        if ! command -v pip3 >/dev/null 2>&1 && ! python3 -m pip --version >/dev/null 2>&1; then
+            MISSING+=(python3-pip)
+        fi
+        # Debian's `bat` package installs the binary as `batcat` to avoid
+        # conflicting with another tool; the zshrc aliases accordingly.
+        if ! command -v bat >/dev/null 2>&1 && ! command -v batcat >/dev/null 2>&1; then
+            MISSING+=(bat)
+        fi
+
+        if [ ${#MISSING[@]} -eq 0 ]; then
+            ui_branch "All apt packages already installed, skipping apt-get update"
+        else
+            ui_branch "Installing via apt: ${MISSING[*]}"
+            if ! sudo apt-get update -qq 2>&1 | sed 's/^/      /' >&2; then
+                ui_error_noexit "apt-get update failed"
+                INSTALL_FAILED=true
+            fi
+            if ! sudo apt-get install -y -qq "${MISSING[@]}" 2>&1 | sed 's/^/      /' >&2; then
+                ui_error_noexit "Some apt packages failed to install"
+                INSTALL_FAILED=true
+            fi
         fi
 
         # Install Sheldon (not in apt)
@@ -313,10 +358,24 @@ case "$OS_FAMILY" in
         ;;
 
     fedora)
-        ui_branch "Installing packages via dnf..."
-        if ! sudo dnf install -y curl git zsh python3 python3-pip bat 2>&1 | sed 's/^/      /' >&2; then
-            ui_error_noexit "Some dnf packages failed to install"
-            INSTALL_FAILED=true
+        MISSING=()
+        _pkg_need curl    curl
+        _pkg_need git     git
+        _pkg_need zsh     zsh
+        _pkg_need python3 python3
+        if ! command -v pip3 >/dev/null 2>&1 && ! python3 -m pip --version >/dev/null 2>&1; then
+            MISSING+=(python3-pip)
+        fi
+        _pkg_need bat bat
+
+        if [ ${#MISSING[@]} -eq 0 ]; then
+            ui_branch "All dnf packages already installed, skipping dnf install"
+        else
+            ui_branch "Installing via dnf: ${MISSING[*]}"
+            if ! sudo dnf install -y "${MISSING[@]}" 2>&1 | sed 's/^/      /' >&2; then
+                ui_error_noexit "Some dnf packages failed to install"
+                INSTALL_FAILED=true
+            fi
         fi
 
         # Install Sheldon (not in dnf)
