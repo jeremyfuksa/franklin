@@ -7,6 +7,8 @@ and the project aims to follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [2.1.0] - 2026-04-17
+
 ### Changed
 
 - **Campfire palette aligned with upstream scales.** The 7 colors in `CAMPFIRE_COLORS` that correspond to Campfire semantic scales (Cello, Terracotta, Black Rock, Sage, Golden Amber, Flamingo, Blue Calx) now pull `dark`/`light` variants directly from Campfire's 11-step scales (`dark` = scale-700, `light` = scale-300, with Blue Calx using scale-100 since the info scale is compressed at the 300-500 end). Replaces hand-rolled HSL shifts, removes six stale "Δ-xx%" comments, and ensures the Franklin MOTD shares its hierarchy with the canonical Campfire design tokens. No user-visible config change is required — `MOTD_COLOR` / `MOTD_COLOR_NAME` keys continue to work.
@@ -24,6 +26,14 @@ and the project aims to follow [Semantic Versioning](https://semver.org/).
 - **mise runtime setup on fresh installs:** `install.sh` now ensures `~/.local/bin` is on `PATH` after `curl | sh` so the follow-up `mise install` step is actually invoked on systems where that directory wasn't already exported (common on macOS).
 - **mise install failures** are no longer swallowed as non-fatal warnings; they now surface via `ui_error_noexit` and set `INSTALL_FAILED` so the final install summary reflects them.
 - **`mise.toml`** now pins `python = "latest"` instead of the invalid `"lts"` alias (Python has no LTS designation; the prior value caused `mise install` to fail to resolve a Python version).
+
+### Documentation
+
+- **README Daily Moves table** now references the real Python subcommands (`franklin doctor`, `franklin update`, `franklin update-all`, `franklin config`, `franklin motd`, `franklin --version`) instead of ghost shell scripts (`update-all.sh`, `update-franklin.sh`) that never existed in this repo.
+- **Troubleshooting** uses the correct MOTD env var: `FRANKLIN_SHOW_MOTD` (not the phantom `FRANKLIN_ENABLE_MOTD` / `FRANKLIN_SHOW_MOTD_ON_LOGIN`).
+- **Advanced Configuration** documents the new `--with-claude` / `--no-claude` install flags and drops the `update.env` / `FRANKLIN_UPDATE_MODE` section (those env vars aren't wired up in the Python CLI).
+- **Development** block references the actual test entry points (`pytest test/test_cli.py`, `test/ui-demo.sh`, `test/sheldon-diagnostic.sh`) instead of scripts that never existed.
+- **CLAUDE.md** file tree lists `mise.toml`; testing section shows the current flag surface (`--non-interactive`, `--color`, `--with-claude`, `--no-claude`) with a note on color name normalization; UI Conventions section documents that the Campfire palette is the source of truth for both CLI chrome and MOTD hierarchy.
 
 ## [2.0.5] - 2025-02-27
 

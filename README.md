@@ -51,7 +51,7 @@ bash install.sh
 | eza | Modern `ls` replacement with Git status, icons, and tree view. Franklin aliases `ls`/`ll`/`la`/`l` ⇒ `eza` when installed; adds `lt` for a quick tree. Falls back to plain `ls` on older distros where `eza` isn't packaged. |
 | fzf, ripgrep | Included on Linux for quick fuzzy search and grepping. |
 | mise + Node/Python LTS | Runtime versions managed via `mise.toml`; installed by `install.sh`. |
-| MOTD dashboard | Franklin Campfire banner with host/OS/disk/memory details. Toggle with `FRANKLIN_ENABLE_MOTD` / `FRANKLIN_SHOW_MOTD_ON_LOGIN`. |
+| MOTD dashboard | Franklin Campfire banner with host/OS/disk/memory details. Toggle with `FRANKLIN_SHOW_MOTD=0` in `~/.franklin.local.zsh`. |
 | Fonts | MOTD status icons (``, ``, turtle) require a Nerd Font (e.g., Dank Mono Nerd Font). |
 | Campfire UI palette | Non-banner UI chrome (install/update logs, badges) uses the Campfire palette (Cello/Terracotta/Black Rock) for consistent Franklin branding. |
 
@@ -61,10 +61,12 @@ Everything lives under your install dir (default `~/.local/share/franklin`) with
 
 | Command | Purpose |
 | --- | --- |
-| `update-all.sh` | Streams real-time progress while updating Franklin core files, OS packages (brew/apt/dnf), Sheldon plugins, Starship, mise runtimes (Node, Python), uv, npm globals, and version pins. Detects your OS, filters noisy output in `auto` mode, and accepts `--mode=quiet|auto|verbose`. |
-| `franklin` | Helper CLI wrapper; use `franklin update` for Franklin core only (via `update-franklin.sh`), `franklin update-all` for everything else, plus `franklin check`/`-v`. |
-| `motd` | Renders the Franklin dashboard on demand; auto-runs at login unless disabled. |
-| `reload` | Re-sources `.zshrc` after edits—Franklin's equivalent of poking his head out and checking his surroundings. |
+| `franklin doctor` | Runs diagnostic checks (Zsh, Sheldon, Starship, Python, bat). Add `--json` for machine-readable output. |
+| `franklin update` | Pulls the latest Franklin core from git. Supports `--dry-run` and `--yes`. |
+| `franklin update-all` | Updates Franklin core + Sheldon plugins. Add `--system` to also run `brew`/`apt`/`dnf` upgrades. Supports `--dry-run`. |
+| `franklin config [--color NAME\|#hex]` | Interactive TUI for settings, or set the MOTD color directly. Accepts Title Case (`"Mauve Earth"`), lowercase (`mauve earth`), and kebab-case (`mauve-earth`). |
+| `franklin motd` | Renders the Franklin dashboard on demand; auto-runs on login unless disabled. |
+| `franklin --version` | Prints the installed Franklin version. |
 
 ## Customization
 
@@ -94,15 +96,13 @@ The prompt is powered by [Starship](https://starship.rs/). You can customize it 
   MONITORED_SERVICES="nginx,postgresql,redis"
   ```
 
-- **Disable MOTD**: To prevent the MOTD from showing on login, set `FRANKLIN_SHOW_MOTD_ON_LOGIN=0` in `~/.franklin.local.zsh`.
+- **Disable MOTD**: To prevent the MOTD from showing on login, set `FRANKLIN_SHOW_MOTD=0` in `~/.franklin.local.zsh`.
 
 ### Advanced Configuration
 
-- **Update Behavior**: Control the default mode for `update-all.sh` by creating `~/.config/franklin/update.env`.
-  ```env
-  # ~/.config/franklin/update.env
-  FRANKLIN_UPDATE_MODE=quiet # quiet, auto, or verbose
-  FRANKLIN_UPDATE_TIMEOUT=600
+- **Claude Code**: The installer can optionally install [Claude Code](https://docs.anthropic.com/en/docs/claude-code) via Anthropic's native installer (no Node dependency). On a TTY, `install.sh` prompts you; in non-interactive mode it skips unless `--with-claude` is passed. Use `--no-claude` to skip the prompt entirely. Example:
+  ```bash
+  bash install.sh --non-interactive --color cello --with-claude
   ```
 
 - **Backup Location**: To change where Franklin stores backups of your old dotfiles, set the `FRANKLIN_BACKUP_DIR` environment variable *before* running the installer.
@@ -117,9 +117,9 @@ The prompt is powered by [Starship](https://starship.rs/). You can customize it 
 
 | Issue | Fix |
 | --- | --- |
-| `update-all.sh` complains about missing package manager | Install Homebrew/apt/dnf, then rerun. |
-| MOTD doesn’t show | Ensure `FRANKLIN_ENABLE_MOTD=1` and `FRANKLIN_SHOW_MOTD_ON_LOGIN=1`, then run `motd` to verify. |
-| Wrong color | Prefer `franklin config --color <name|#hex>`; or edit `~/.config/franklin/config.env`. |
+| `franklin update-all --system` complains about missing package manager | Install Homebrew/apt/dnf, then rerun. |
+| MOTD doesn’t show | Ensure `FRANKLIN_SHOW_MOTD=1` in `~/.franklin.local.zsh`, then run `franklin motd` to verify. |
+| Wrong color | Prefer `franklin config --color <name\|#hex>`; or edit `~/.config/franklin/config.env`. |
 | Need to reinstall | Remove `~/.config/franklin` and `~/.local/share/franklin`, then rerun the bootstrapper. |
 | Mixed stdout/stderr | UI logs go to stderr by design; pipe `franklin ... --json` output from stdout. |
 
@@ -128,11 +128,14 @@ The prompt is powered by [Starship](https://starship.rs/). You can customize it 
 Working on Franklin itself (not just using it)?
 
 ```bash
-# Bootstrap smoke test (uses a GitHub-style archive from HEAD)
-bash test/bootstrap-tests.sh
+# CLI smoke tests
+python -m pytest test/test_cli.py -v
 
-# Legacy installer tests (macOS-oriented)
-bash test/test_install.sh
+# Visual UI demo (renders headers, badges, progress bars in your terminal)
+bash test/ui-demo.sh
+
+# Sheldon plugin diagnostic
+bash test/sheldon-diagnostic.sh
 ```
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for coding style, release expectations, and PR guidelines.
