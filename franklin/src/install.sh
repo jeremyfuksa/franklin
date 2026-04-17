@@ -627,12 +627,16 @@ CHSH_SKIPPED_REASON=""
 _install_ensure_zsh_in_shells() {
     local zsh_path="$1"
     # /etc/shells exists on every supported OS; if the path is already there
-    # we don't need sudo.
+    # we don't need sudo (and this is the usual case — apt/dnf/brew register
+    # zsh automatically during install).
     if [ -f /etc/shells ] && grep -Fxq "$zsh_path" /etc/shells; then
         return 0
     fi
-    ui_branch "Registering $zsh_path in /etc/shells..."
-    if echo "$zsh_path" | sudo tee -a /etc/shells >/dev/null 2>&1; then
+    # Only reaches here if zsh was installed in some unusual way that left it
+    # out of /etc/shells. Don't swallow stderr so the user can see any sudo
+    # password prompt.
+    ui_branch "Registering $zsh_path in /etc/shells (sudo required)..."
+    if echo "$zsh_path" | sudo tee -a /etc/shells >/dev/null; then
         return 0
     fi
     return 1
@@ -652,18 +656,32 @@ else
         ui_branch "zsh is already the default shell ($ZSH_PATH)"
     else
         if _install_ensure_zsh_in_shells "$ZSH_PATH"; then
-            # chsh prompts for the user's password via PAM. When install.sh
-            # is launched through `curl | bash`, stdin is the pipe so the
-            # prompt can't read; redirecting from /dev/tty works around that
-            # in interactive SSH / terminal sessions. If /dev/tty isn't
-            # available (cron, systemd unit, etc.), skip.
+            # chsh prompts for the user's password via PAM. Two pitfalls to
+            # dodge here:
+            #   1. When install.sh is launched via `curl | bash`, stdin is
+            #      the pipe so the prompt can't read. Redirect from /dev/tty
+            #      so the prompt reads from the user's actual terminal.
+            #   2. The "Password:" prompt is printed WITHOUT a trailing
+            #      newline. If we pipe chsh's stderr through `sed`, sed's
+            #      line-buffering swallows the prompt until a newline shows
+            #      up — the user sees nothing, hits Enter thinking it hung,
+            #      and PAM rejects the empty password. So we do NOT pipe
+            #      chsh output at all: it inherits stderr directly and the
+            #      prompt appears instantly.
             if [ ! -c /dev/tty ]; then
                 CHSH_SKIPPED_REASON="no controlling TTY for chsh password prompt"
             else
-                ui_branch "Changing default shell to $ZSH_PATH..."
-                if chsh -s "$ZSH_PATH" </dev/tty 2>&1 | sed 's/^/      /' >&2; then
+                ui_branch "Changing default shell to $ZSH_PATH"
+                ui_branch "chsh will prompt for your login password below:"
+                echo "" >&2
+                # Redirect stdin AND stderr explicitly to /dev/tty so the PAM
+                # prompt is guaranteed visible and readable regardless of how
+                # install.sh's own fds were wired up by the caller.
+                if chsh -s "$ZSH_PATH" </dev/tty 2>/dev/tty; then
+                    echo "" >&2
                     CHSH_CHANGED=true
                 else
+                    echo "" >&2
                     ui_warning "chsh failed. You can finish the change manually: chsh -s $ZSH_PATH"
                     CHSH_SKIPPED_REASON="chsh invocation failed"
                 fi
