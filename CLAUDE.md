@@ -122,11 +122,62 @@ Scopes: `cli`, `install`, `update`, `ui`, `motd`, `config`
 
 ## Release Workflow
 
-1. Update `CHANGELOG.md` under `[Unreleased]`
-2. Sync version in `VERSION` and `franklin/pyproject.toml`
-3. Commit: `release: vX.Y.Z`
-4. Tag: `git tag vX.Y.Z && git push origin main --tags`
-5. Create GitHub release from tag
+When the user asks to cut a release — any phrasing ("cut a release", "ship v2.1.3", "tag and publish") — the assistant runs the full playbook below. The user's only manual steps are to merge the PR and (until the git-proxy blocker is lifted) push the tag and click Publish. The assistant never hands off changelog curation, version math, or SHA lookup.
+
+### Step 1 — Agent: open the release PR
+
+1. Decide the version.
+   - **Patch** (`X.Y.Z+1`): only fixes, tiny UX refinements, docs.
+   - **Minor** (`X.Y+1.0`): new user-visible features, CLI subcommands/flags, install dependencies.
+   - **Major** (`X+1.0.0`): breaking changes to flags, config formats, CLI contracts, or install layout.
+   - Ask the user when `[Unreleased]` is ambiguous; default to patch otherwise.
+2. Branch from tip of `main`: `claude/release-vX.Y.Z`.
+3. Update:
+   - `VERSION` → `X.Y.Z`
+   - `franklin/pyproject.toml` → `version = "X.Y.Z"`
+   - `CHANGELOG.md` → promote `[Unreleased]` to `[X.Y.Z] - <today>` and leave a fresh empty `[Unreleased]` block above it.
+4. Commit with `release: vX.Y.Z` and a body summarising the changes since the prior tag (grouped by PR).
+5. Push and open the PR (title: `release: vX.Y.Z`).
+
+### Step 2 — User: merge the release PR
+
+Standard "merge commit" method (matches every prior Franklin release).
+
+### Step 3 — Agent: tag and prepare the publish kit
+
+After the merge webhook fires, the assistant:
+
+1. `git checkout main && git pull origin main` to fast-forward locally.
+2. `git tag -a vX.Y.Z <merge-sha> -m "Franklin vX.Y.Z"` on the merge commit.
+3. Attempts `git push origin vX.Y.Z`. **This currently 403s** because the localhost git proxy filters `refs/tags/*` pushes (see "Known blocker" below).
+
+**Regardless of whether the tag push succeeded**, the assistant posts a single "publish kit" message with:
+
+- The merge SHA.
+- A ready-to-run snippet for the user's local machine:
+  ```bash
+  git fetch origin
+  git tag -a vX.Y.Z <merge-sha> -m "Franklin vX.Y.Z"
+  git push origin vX.Y.Z
+  ```
+- The direct-click URL: `https://github.com/jeremyfuksa/franklin/releases/new?tag=vX.Y.Z`
+- The release **title**: `Franklin vX.Y.Z`.
+- The release **body**: ready-to-paste Markdown pulled from the new CHANGELOG section, reorganised into a short "Highlights" summary at the top with a link back to the CHANGELOG for the full detail block.
+
+### Step 4 — User: push the tag and publish
+
+1. Run the three-line `git` snippet from the publish kit.
+2. Open the URL from the publish kit.
+3. Paste title (if not already pre-filled) and body.
+4. Click **Publish release**.
+
+### Known blocker: tag push 403
+
+The localhost git proxy at `http://local_proxy@127.0.0.1:<port>/…` currently allows branch pushes but rejects `refs/tags/*` with HTTP 403. Once its ref-allowlist is relaxed to include tags, Step 3's push will succeed and the agent can (a) push the tag directly, (b) call `mcp__github__create_release` (once that tool is exposed by the MCP server's `repos` toolset), and skip the user's tag-push+click loop entirely.
+
+### Cross-project note
+
+This playbook lives in this repo's `CLAUDE.md`, so it applies to Franklin only. To get the same behaviour in another project, mirror this section into that project's `CLAUDE.md` (or add it to `~/.claude/CLAUDE.md` for every session, repo-agnostic).
 
 ## Key Principles
 
