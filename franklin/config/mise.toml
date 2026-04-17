@@ -4,4 +4,4 @@
 
 [tools]
 node = "lts"
-python = "lts"
+python = "latest"

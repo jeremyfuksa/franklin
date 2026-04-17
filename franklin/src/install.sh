@@ -15,6 +15,8 @@
 # Flags:
 #   --non-interactive   Skip interactive prompts (use defaults)
 #   --color NAME        Pre-select MOTD color (e.g., Cello, Terracotta)
+#   --with-claude       Install Claude Code (native installer) without prompting
+#   --no-claude         Skip Claude Code installation without prompting
 
 set -euo pipefail
 
@@ -28,6 +30,7 @@ VENV_DIR="${HOME}/.local/share/franklin/venv"
 # --- Parse Arguments ---
 NON_INTERACTIVE=false
 PRESET_COLOR=""
+CLAUDE_CHOICE=""  # "", "yes", or "no"
 
 while [ $# -gt 0 ]; do
     case "$1" in
@@ -43,9 +46,17 @@ while [ $# -gt 0 ]; do
             PRESET_COLOR="$2"
             shift 2
             ;;
+        --with-claude)
+            CLAUDE_CHOICE="yes"
+            shift
+            ;;
+        --no-claude)
+            CLAUDE_CHOICE="no"
+            shift
+            ;;
         *)
             echo "ERROR: Unknown argument: $1" >&2
-            echo "Usage: install.sh [--non-interactive] [--color NAME]" >&2
+            echo "Usage: install.sh [--non-interactive] [--color NAME] [--with-claude|--no-claude]" >&2
             exit 1
             ;;
     esac
@@ -317,11 +328,31 @@ ui_section_end
 # --- Install mise ---
 ui_header "Setting up mise"
 
+# https://mise.run installs the binary at ~/.local/bin/mise by default.
+# Ensure ~/.local/bin is on PATH for the remainder of this installer so
+# subsequent `mise` invocations resolve even on shells that didn't already
+# include it (common on macOS).
+case ":${PATH}:" in
+    *":${HOME}/.local/bin:"*) ;;
+    *) export PATH="${HOME}/.local/bin:${PATH}" ;;
+esac
+
 if ! command -v mise >/dev/null 2>&1; then
     ui_branch "Installing mise..."
-    curl https://mise.run | sh 2>&1 | sed 's/^/  /' >&2
+    if ! curl -fsSL https://mise.run | sh 2>&1 | sed 's/^/  /' >&2; then
+        ui_error_noexit "mise installer failed"
+        INSTALL_FAILED=true
+    fi
 else
     ui_branch "mise already installed"
+fi
+
+# Resolve mise binary path (works even if PATH cache is stale)
+MISE_BIN=""
+if command -v mise >/dev/null 2>&1; then
+    MISE_BIN="$(command -v mise)"
+elif [ -x "${HOME}/.local/bin/mise" ]; then
+    MISE_BIN="${HOME}/.local/bin/mise"
 fi
 
 # Link mise config
@@ -333,13 +364,60 @@ if [ -f "$MISE_CONFIG_SRC" ]; then
     ui_branch "Linked mise config"
 fi
 
-# Install managed runtimes (Node LTS + Python LTS)
-if command -v mise >/dev/null 2>&1; then
-    ui_branch "Installing runtimes via mise..."
-    mise install 2>&1 | sed 's/^/  /' >&2 || ui_warning "mise install had warnings (non-fatal)"
+# Install managed runtimes (Node LTS + Python latest)
+if [ -n "$MISE_BIN" ]; then
+    ui_branch "Installing runtimes via mise (Node LTS, Python latest)..."
+    if ! "$MISE_BIN" install 2>&1 | sed 's/^/  /' >&2; then
+        ui_error_noexit "mise failed to install one or more runtimes (see output above)"
+        INSTALL_FAILED=true
+    fi
+else
+    ui_error_noexit "mise binary not found after install; skipping runtime setup"
+    INSTALL_FAILED=true
 fi
 
 ui_success "mise ready"
+ui_section_end
+
+# --- Install Claude Code (optional) ---
+ui_header "Claude Code (optional)"
+
+# Decide whether to install:
+#   CLAUDE_CHOICE set via --with-claude / --no-claude wins.
+#   Otherwise prompt interactively (default: yes).
+#   In non-interactive mode without a flag, skip.
+if command -v claude >/dev/null 2>&1; then
+    ui_branch "Claude Code already installed, skipping"
+    CLAUDE_INSTALL=false
+elif [ "$CLAUDE_CHOICE" = "yes" ]; then
+    CLAUDE_INSTALL=true
+elif [ "$CLAUDE_CHOICE" = "no" ]; then
+    ui_branch "Skipping Claude Code install (--no-claude)"
+    CLAUDE_INSTALL=false
+elif [ -t 0 ] && [ "$NON_INTERACTIVE" = false ]; then
+    echo "" >&2
+    echo "Claude Code is Anthropic's official CLI for Claude." >&2
+    echo "It installs to ~/.local/bin/claude and is kept up to date automatically." >&2
+    echo "" >&2
+    read -r -p "Install Claude Code now? [Y/n]: " claude_reply
+    case "${claude_reply:-Y}" in
+        n|N|no|NO) CLAUDE_INSTALL=false ;;
+        *)         CLAUDE_INSTALL=true ;;
+    esac
+else
+    ui_branch "Non-interactive mode, skipping Claude Code (use --with-claude to install)"
+    CLAUDE_INSTALL=false
+fi
+
+if [ "${CLAUDE_INSTALL:-false}" = true ]; then
+    ui_branch "Installing Claude Code via native installer..."
+    if ! curl -fsSL https://claude.ai/install.sh | bash 2>&1 | sed 's/^/  /' >&2; then
+        ui_error_noexit "Claude Code installer failed (non-fatal, rerun install.sh --with-claude later)"
+    else
+        ui_success "Claude Code installed"
+    fi
+fi
+
 ui_section_end
 
 # --- Set up Python Virtual Environment ---
