@@ -7,6 +7,10 @@ and the project aims to follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Fixed
+
+- **Unknown `$TERM` values now fall back to `xterm-256color`** in the Franklin zshrc. Previously, SSH'ing into a Franklin-managed host from a terminal advertising a `TERM` value the host's terminfo didn't know (most commonly Ghostty's `xterm-ghostty` connecting to a host without ghostty terminfo installed) caused two compounding visible failures: zsh's line editor mis-computed column widths, so each keystroke duplicated characters in the redraw (`claude` rendering as `claudellaauudde`), and color escapes were emitted literally because the terminfo entry didn't claim 256-color support. The zshrc now probes the active `TERM` with `infocmp -q` early in startup and exports `TERM=xterm-256color` if it's unknown — preserving 256-color support and a sane line editor without requiring per-host terminfo installation.
+
 ## [2.1.2] - 2026-04-17
 
 ### Changed

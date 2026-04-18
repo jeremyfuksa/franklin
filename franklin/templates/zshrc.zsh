@@ -6,6 +6,18 @@
 export FRANKLIN_ROOT="${HOME}/.local/share/franklin"
 export FRANKLIN_CONFIG="${HOME}/.config/franklin"
 
+# --- TERM Fallback ---
+# If the TERM value advertised by the connecting terminal isn't known to this
+# host's terminfo database, zsh's line editor mis-computes column widths
+# (causing duplicated/garbled characters as you type) and color escapes get
+# rendered literally. Most commonly hits Ghostty (TERM=xterm-ghostty) SSH'ing
+# into a host where ghostty terminfo isn't installed. Falling back to
+# xterm-256color preserves 256-color support and a sane line editor without
+# requiring any per-host setup.
+if [[ -n "${TERM:-}" ]] && ! infocmp -q "$TERM" >/dev/null 2>&1; then
+    export TERM=xterm-256color
+fi
+
 # --- PATH Management ---
 # Clean and deduplicate PATH, ensuring all required directories are present
 
