@@ -7,6 +7,8 @@ and the project aims to follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [2.1.3] - 2026-04-18
+
 ### Added
 
 - **`install.sh` installs Ghostty's terminfo into `~/.terminfo`** (best-effort) so that SSH'ing into a Franklin-managed host from Ghostty gets full-fidelity terminal support out of the box. Uses the upstream terminfo source from `ghostty-org/ghostty` and compiles it via `tic -x -o ~/.terminfo`; no sudo required. If the fetch fails (no network, no `tic`, etc.), the install warns and shows Ghostty's official one-liner from the docs at https://ghostty.org/docs/help/terminfo: `infocmp -x xterm-ghostty | ssh user@host -- tic -x -`. The zshrc `TERM=xterm-256color` fallback (also new in this release) catches anything that slips through. Works alongside the official "ssh-terminfo" Ghostty shell-integration feature, which auto-pushes terminfo on first connect when enabled on the client.
