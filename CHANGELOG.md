@@ -11,6 +11,10 @@ and the project aims to follow [Semantic Versioning](https://semver.org/).
 
 - **`install.sh` installs Ghostty's terminfo into `~/.terminfo`** (best-effort) so that SSH'ing into a Franklin-managed host from Ghostty gets full-fidelity terminal support out of the box. Uses the upstream terminfo source from `ghostty-org/ghostty` and compiles it via `tic -x -o ~/.terminfo`; no sudo required. If the fetch fails (no network, no `tic`, etc.), the install warns and shows Ghostty's official one-liner from the docs at https://ghostty.org/docs/help/terminfo: `infocmp -x xterm-ghostty | ssh user@host -- tic -x -`. The zshrc `TERM=xterm-256color` fallback (also new in this release) catches anything that slips through. Works alongside the official "ssh-terminfo" Ghostty shell-integration feature, which auto-pushes terminfo on first connect when enabled on the client.
 
+### Fixed
+
+- **Unknown `$TERM` values now fall back to `xterm-256color`** in the Franklin zshrc. Previously, SSH'ing into a Franklin-managed host from a terminal advertising a `TERM` value the host's terminfo didn't know (most commonly Ghostty's `xterm-ghostty` connecting to a host without ghostty terminfo installed) caused two compounding visible failures: zsh's line editor mis-computed column widths, so each keystroke duplicated characters in the redraw (`claude` rendering as `claudellaauudde`), and color escapes were emitted literally because the terminfo entry didn't claim 256-color support. The zshrc now probes the active `TERM` with `infocmp -q` early in startup and exports `TERM=xterm-256color` if it's unknown — preserving 256-color support and a sane line editor without requiring per-host terminfo installation.
+
 ## [2.1.2] - 2026-04-17
 
 ### Changed
