@@ -615,6 +615,43 @@ ln -sf "${FRANKLIN_ROOT}/config/starship.toml" "$STARSHIP_CONFIG"
 ui_success "Starship config linked"
 ui_section_end
 
+# --- Modern terminal terminfo entries ---
+# When users SSH in from a modern terminal like Ghostty
+# (TERM=xterm-ghostty) and the host's terminfo doesn't know that entry,
+# zsh's line editor mis-computes column widths (-> duplicated characters
+# while typing) and color escapes get emitted literally.
+#
+# Ghostty's official terminfo install method is to push from the LOCAL
+# machine: `infocmp -x xterm-ghostty | ssh host -- tic -x -` (see
+# https://ghostty.org/docs/help/terminfo). That can't run during this
+# install — we're on the target host, not the source. We fall back to
+# fetching the upstream terminfo source and compiling it into
+# ~/.terminfo (no sudo). If the fetch fails, we point the user at the
+# official command. Either way, the zshrc TERM fallback (set TERM to
+# xterm-256color when unknown) keeps things working in the meantime.
+ui_header "Installing modern terminal terminfo entries"
+
+GHOSTTY_TERMINFO_URL="https://raw.githubusercontent.com/ghostty-org/ghostty/main/src/terminfo/ghostty.terminfo"
+GHOSTTY_OFFICIAL_HINT="For canonical install, run from your local machine: infocmp -x xterm-ghostty | ssh ${USER}@<this-host> -- tic -x -"
+
+if ! command -v tic >/dev/null 2>&1; then
+    ui_warning "tic not found (ncurses-bin missing); skipping Ghostty terminfo install"
+    ui_branch "$GHOSTTY_OFFICIAL_HINT"
+elif infocmp xterm-ghostty >/dev/null 2>&1; then
+    ui_branch "Ghostty terminfo already present, skipping"
+else
+    ui_branch "Installing Ghostty terminfo into ~/.terminfo (best-effort fetch from upstream)..."
+    if curl -fsSL "$GHOSTTY_TERMINFO_URL" | tic -x -o "${HOME}/.terminfo" - 2>&1 | sed 's/^/      /' >&2 \
+       && infocmp xterm-ghostty >/dev/null 2>&1; then
+        ui_success "Ghostty terminfo installed (xterm-ghostty)"
+    else
+        ui_warning "Ghostty terminfo install failed; zshrc TERM fallback will apply"
+        ui_branch "$GHOSTTY_OFFICIAL_HINT"
+    fi
+fi
+
+ui_section_end
+
 # --- Set zsh as the default login shell ---
 # Without this, SSH sessions and new terminals will still land in whatever
 # shell was the default (bash on most Linux distros), meaning the Franklin
