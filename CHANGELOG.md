@@ -7,6 +7,10 @@ and the project aims to follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Changed
+
+- **Truecolor is advertised via `COLORTERM=truecolor`** whenever the zshrc `TERM` fallback kicks in. The fallback only triggers when an unknown (almost always modern) terminal is connecting, and every modern terminal — Ghostty, Kitty, WezTerm, iTerm2, Alacritty — renders 24-bit color escapes natively regardless of terminfo. Apps that check `$COLORTERM` (Starship, bat, nvim, fzf, delta, …) will now emit truecolor sequences in the fallback case instead of quantising to the 256-color palette implied by `TERM=xterm-256color`. Uses `: "${COLORTERM:=truecolor}"` so any value the client actually set (passed through via SSH's `SendEnv`, for instance) is preserved.
+
 ### Added
 
 - **`install.sh` installs Ghostty's terminfo into `~/.terminfo`** (best-effort) so that SSH'ing into a Franklin-managed host from Ghostty gets full-fidelity terminal support out of the box. Uses the upstream terminfo source from `ghostty-org/ghostty` and compiles it via `tic -x -o ~/.terminfo`; no sudo required. If the fetch fails (no network, no `tic`, etc.), the install warns and shows Ghostty's official one-liner from the docs at https://ghostty.org/docs/help/terminfo: `infocmp -x xterm-ghostty | ssh user@host -- tic -x -`. The zshrc `TERM=xterm-256color` fallback (also new in this release) catches anything that slips through. Works alongside the official "ssh-terminfo" Ghostty shell-integration feature, which auto-pushes terminfo on first connect when enabled on the client.
