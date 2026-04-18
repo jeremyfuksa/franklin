@@ -7,6 +7,8 @@ and the project aims to follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [2.1.3] - 2026-04-18
+
 ### Changed
 
 - **Truecolor is advertised via `COLORTERM=truecolor`** whenever the zshrc `TERM` fallback kicks in. The fallback only triggers when an unknown (almost always modern) terminal is connecting, and every modern terminal — Ghostty, Kitty, WezTerm, iTerm2, Alacritty — renders 24-bit color escapes natively regardless of terminfo. Apps that check `$COLORTERM` (Starship, bat, nvim, fzf, delta, …) will now emit truecolor sequences in the fallback case instead of quantising to the 256-color palette implied by `TERM=xterm-256color`. Uses `: "${COLORTERM:=truecolor}"` so any value the client actually set (passed through via SSH's `SendEnv`, for instance) is preserved.
