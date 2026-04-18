@@ -14,8 +14,18 @@ export FRANKLIN_CONFIG="${HOME}/.config/franklin"
 # into a host where ghostty terminfo isn't installed. Falling back to
 # xterm-256color preserves 256-color support and a sane line editor without
 # requiring any per-host setup.
+#
+# When we fall back, also advertise truecolor via COLORTERM (unless the
+# client already set one). The TERM fallback only triggers when an unknown —
+# almost always modern — terminal is connecting, and every modern terminal
+# (Ghostty, Kitty, WezTerm, iTerm2, Alacritty, …) renders 24-bit color
+# escapes natively regardless of terminfo. Apps that check COLORTERM
+# (Starship, bat, nvim, fzf, delta, …) will then still emit truecolor
+# sequences instead of quantising to the 256-color palette implied by TERM.
 if [[ -n "${TERM:-}" ]] && ! infocmp -q "$TERM" >/dev/null 2>&1; then
     export TERM=xterm-256color
+    : "${COLORTERM:=truecolor}"
+    export COLORTERM
 fi
 
 # --- PATH Management ---
