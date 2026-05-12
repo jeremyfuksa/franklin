@@ -1,0 +1,123 @@
+name: Release
+
+# Fires when a release lands on main (i.e. the VERSION file changed). The
+# release PR from CLAUDE.md's playbook bumps VERSION + pyproject.toml +
+# CHANGELOG together, so a VERSION diff vs. the previous main tip is a
+# reliable, merge-style-agnostic signal that this is a release push.
+#
+# This workflow replaces what was previously Steps 3-4 of the manual
+# playbook (tag push + click-to-publish).
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Detect VERSION change
+        id: detect
+        run: |
+          set -euo pipefail
+          # github.event.before is all-zeros for branch-create events. Fall
+          # back to HEAD~1 in that case so the workflow still does the right
+          # thing on first push.
+          before="${{ github.event.before }}"
+          if [ -z "$before" ] || [ "$before" = "0000000000000000000000000000000000000000" ]; then
+              before="HEAD~1"
+          fi
+          if git diff --quiet "$before" HEAD -- VERSION 2>/dev/null; then
+              echo "VERSION unchanged; this is not a release push."
+              echo "release=false" >> "$GITHUB_OUTPUT"
+              exit 0
+          fi
+          new_v="$(tr -d '[:space:]' < VERSION)"
+          if ! [[ "$new_v" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+              echo "::error::VERSION ($new_v) is not a valid X.Y.Z semver"
+              exit 1
+          fi
+          echo "VERSION changed; preparing release v$new_v"
+          echo "release=true" >> "$GITHUB_OUTPUT"
+          echo "version=$new_v" >> "$GITHUB_OUTPUT"
+          echo "tag=v$new_v" >> "$GITHUB_OUTPUT"
+
+      - name: Verify pyproject.toml agrees with VERSION
+        if: steps.detect.outputs.release == 'true'
+        run: |
+          set -euo pipefail
+          v="${{ steps.detect.outputs.version }}"
+          py_v="$(grep -m1 '^version = ' franklin/pyproject.toml | sed 's/^version = "\(.*\)"$/\1/')"
+          if [ "$v" != "$py_v" ]; then
+              echo "::error::pyproject.toml version ($py_v) does not match VERSION ($v)"
+              exit 1
+          fi
+
+      - name: Skip if tag already exists on origin
+        if: steps.detect.outputs.release == 'true'
+        id: gate
+        run: |
+          set -euo pipefail
+          if git ls-remote --exit-code --tags origin "refs/tags/${{ steps.detect.outputs.tag }}" >/dev/null 2>&1; then
+              echo "Tag ${{ steps.detect.outputs.tag }} already exists on origin — nothing to do."
+              echo "skip=true" >> "$GITHUB_OUTPUT"
+          else
+              echo "skip=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Extract changelog section
+        if: steps.detect.outputs.release == 'true' && steps.gate.outputs.skip != 'true'
+        id: notes
+        run: |
+          set -euo pipefail
+          v="${{ steps.detect.outputs.version }}"
+          notes_file="$(mktemp)"
+          # Print everything from "## [vX.Y.Z]" through (but not including)
+          # the next top-level "## [" header.
+          awk -v ver="$v" '
+              /^## \[/ {
+                  if (in_section) { exit }
+                  if ($0 ~ "^## \\[" ver "\\]") { in_section = 1; next }
+              }
+              in_section { print }
+          ' CHANGELOG.md > "$notes_file"
+          if ! [ -s "$notes_file" ]; then
+              echo "::error::Could not find '## [$v]' section in CHANGELOG.md"
+              exit 1
+          fi
+          {
+              cat "$notes_file"
+              echo ""
+              echo "---"
+              echo "Full changelog: https://github.com/${{ github.repository }}/blob/main/CHANGELOG.md"
+          } > "${notes_file}.full"
+          mv "${notes_file}.full" "$notes_file"
+          echo "notes_file=$notes_file" >> "$GITHUB_OUTPUT"
+
+      - name: Create and push tag
+        if: steps.detect.outputs.release == 'true' && steps.gate.outputs.skip != 'true'
+        run: |
+          set -euo pipefail
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git tag -a "${{ steps.detect.outputs.tag }}" -m "Franklin ${{ steps.detect.outputs.tag }}"
+          git push origin "${{ steps.detect.outputs.tag }}"
+
+      - name: Publish GitHub Release
+        if: steps.detect.outputs.release == 'true' && steps.gate.outputs.skip != 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          gh release create "${{ steps.detect.outputs.tag }}" \
+              --title  "Franklin ${{ steps.detect.outputs.tag }}" \
+              --notes-file "${{ steps.notes.outputs.notes_file }}" \
+              --target "${{ github.sha }}"
