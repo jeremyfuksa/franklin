@@ -48,19 +48,25 @@ app = typer.Typer(
 console = Console(no_color=_resolve_no_color(False))
 
 
-def _parse_numeric_selection(selection: str, default_idx: int, max_idx: int) -> int:
-    """Strip ANSI escapes / non-digits and return a validated index."""
-    cleaned = re.sub(r"\x1b\[[0-9;]*[A-Za-z]", "", selection)
-    digits = "".join(ch for ch in cleaned if ch.isdigit())
-    if not digits:
-        return default_idx
-    try:
-        value = int(digits)
-        if 1 <= value <= max_idx:
-            return value
-    except ValueError:
-        pass
-    return default_idx
+def _parse_numeric_selection(
+    selection: str, default_idx: int, max_idx: int
+) -> Tuple[int, bool]:
+    """Parse a numeric menu selection.
+
+    Returns (index, was_valid). was_valid is False only when the user typed
+    something that wasn't recognized — empty input (use default) and a valid
+    in-range number both count as valid so callers don't print a spurious
+    "invalid choice" warning on a legitimate default pick.
+    """
+    cleaned = re.sub(r"\x1b\[[0-9;]*[A-Za-z]", "", selection).strip()
+    if not cleaned:
+        return default_idx, True
+    if not cleaned.isdigit():
+        return default_idx, False
+    value = int(cleaned)
+    if 1 <= value <= max_idx:
+        return value, True
+    return default_idx, False
 
 
 def _ensure_first_run_color(ctx: "typer.Context") -> None:
@@ -92,8 +98,10 @@ def _ensure_first_run_color(ctx: "typer.Context") -> None:
         show_default=True,
     ).strip()
 
-    sel_int = _parse_numeric_selection(selection, default_idx, len(choices))
-    if sel_int == default_idx and selection not in (str(default_idx), ""):
+    sel_int, was_valid = _parse_numeric_selection(
+        selection, default_idx, len(choices)
+    )
+    if not was_valid:
         ui.print_warning(
             f"Invalid choice: {selection}, using default {DEFAULT_CAMPFIRE_COLOR}"
         )
@@ -380,7 +388,7 @@ def update(
         raise typer.Exit(code=1)
 
     if dry_run:
-        ui.print_branch("DRY RUN: git -C <franklin_root> pull")
+        ui.print_branch("DRY RUN: git -C <franklin_root> pull --ff-only")
         ui.print_success("Dry run complete (no changes made).")
         ui.section_end()
         return
@@ -396,9 +404,11 @@ def update(
             ui.print_info("Update cancelled")
             raise typer.Exit()
 
-    # Run git pull
+    # Run git pull. --ff-only refuses to create a merge commit, which means a
+    # tampered remote or rewritten upstream history surfaces as an error
+    # instead of silently merging unfamiliar content into the install tree.
     ui.print_branch("Pulling latest changes...")
-    ok, _ = _run_logged(["git", "-C", str(FRANKLIN_ROOT), "pull"])
+    ok, _ = _run_logged(["git", "-C", str(FRANKLIN_ROOT), "pull", "--ff-only"])
     if not ok:
         raise typer.Exit(code=1)
 
@@ -441,7 +451,10 @@ def update_all(
     if not (FRANKLIN_ROOT / ".git").exists():
         ui.print_warning("Franklin root is not a git repository, skipping core update")
     else:
-        ok, _ = _run_logged(["git", "-C", str(FRANKLIN_ROOT), "pull"], dry_run=dry_run)
+        ok, _ = _run_logged(
+            ["git", "-C", str(FRANKLIN_ROOT), "pull", "--ff-only"],
+            dry_run=dry_run,
+        )
         if ok:
             ui.print_success("Franklin core updated")
         else:
@@ -560,8 +573,6 @@ def config(
             canonical = lookup[normalized]
             save_color(canonical, CAMPFIRE_COLORS[canonical]["base"])
             return
-        import re
-
         if (
             color.startswith("#")
             and len(color) == 7
@@ -604,8 +615,6 @@ def config(
     ).strip()
 
     # Allow hex entry directly
-    import re
-
     if (
         selection.startswith("#")
         and len(selection) == 7
@@ -614,8 +623,10 @@ def config(
         save_color("custom", selection)
         return
 
-    sel_int = _parse_numeric_selection(selection, default_idx, len(choices))
-    if sel_int:
+    sel_int, was_valid = _parse_numeric_selection(
+        selection, default_idx, len(choices)
+    )
+    if was_valid:
         color_choice = choices[sel_int - 1]
         save_color(color_choice, CAMPFIRE_COLORS[color_choice]["base"])
         return

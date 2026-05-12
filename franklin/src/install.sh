@@ -142,6 +142,15 @@ MOTD_COLOR_NAME="Cello"
 # `franklin config --color <name>` so they don't miss that they're on default.
 COLOR_WAS_DEFAULTED=false
 
+# Pull the canonical color table from constants.py so the shell installer
+# and the Python CLI agree on the set of valid names. Stdlib-only emitter,
+# so this works even before the Franklin venv is set up.
+_CONSTANTS_PY="${FRANKLIN_ROOT}/src/lib/constants.py"
+_COLOR_TABLE=""
+if [ -f "$_CONSTANTS_PY" ] && command -v python3 >/dev/null 2>&1; then
+    _COLOR_TABLE="$(python3 "$_CONSTANTS_PY" 2>/dev/null || true)"
+fi
+
 # Handle preset color from --color flag. Accepts Title Case ("Mauve Earth"),
 # lowercase ("mauve earth"), and kebab-case ("mauve-earth") forms for any
 # Campfire color name. Hex codes (#rrggbb) pass through as custom.
@@ -149,36 +158,26 @@ if [ -n "$PRESET_COLOR" ]; then
     # Normalize: lowercase, turn -/_ into spaces, collapse whitespace.
     # Note: put '-' at the end of the tr set so it isn't parsed as a flag.
     PRESET_COLOR_NORM="$(printf '%s' "$PRESET_COLOR" | tr '[:upper:]' '[:lower:]' | tr '_-' '  ' | xargs)"
-    PRESET_MATCHED=true
-    case "$PRESET_COLOR_NORM" in
-        cello)         MOTD_COLOR="#607a97"; MOTD_COLOR_NAME="Cello" ;;
-        terracotta)    MOTD_COLOR="#b87b6a"; MOTD_COLOR_NAME="Terracotta" ;;
-        "black rock")  MOTD_COLOR="#747b8a"; MOTD_COLOR_NAME="Black Rock" ;;
-        sage)          MOTD_COLOR="#8fb14b"; MOTD_COLOR_NAME="Sage" ;;
-        "golden amber") MOTD_COLOR="#f9c574"; MOTD_COLOR_NAME="Golden Amber" ;;
-        flamingo)      MOTD_COLOR="#e75351"; MOTD_COLOR_NAME="Flamingo" ;;
-        "blue calx")   MOTD_COLOR="#b8c5d9"; MOTD_COLOR_NAME="Blue Calx" ;;
-        clay)          MOTD_COLOR="#c89c8d"; MOTD_COLOR_NAME="Clay" ;;
-        ember)         MOTD_COLOR="#d97706"; MOTD_COLOR_NAME="Ember" ;;
-        hay)           MOTD_COLOR="#d4b86a"; MOTD_COLOR_NAME="Hay" ;;
-        moss)          MOTD_COLOR="#5a6f2d"; MOTD_COLOR_NAME="Moss" ;;
-        pine)          MOTD_COLOR="#4a7c7e"; MOTD_COLOR_NAME="Pine" ;;
-        dusk)          MOTD_COLOR="#8b7a9f"; MOTD_COLOR_NAME="Dusk" ;;
-        "mauve earth") MOTD_COLOR="#9b6b7f"; MOTD_COLOR_NAME="Mauve Earth" ;;
-        stone)         MOTD_COLOR="#747b8a"; MOTD_COLOR_NAME="Stone" ;;
-        *)
-            PRESET_MATCHED=false
-            if [[ "$PRESET_COLOR" =~ ^#[0-9A-Fa-f]{6}$ ]]; then
-                MOTD_COLOR="$PRESET_COLOR"
-                MOTD_COLOR_NAME="custom"
-                ui_success "Using custom color: $MOTD_COLOR"
-            else
-                ui_warning "Invalid color '$PRESET_COLOR', using default (Cello)"
-            fi
-            ;;
-    esac
+    PRESET_MATCHED=false
+    while IFS='|' read -r _name _base _dark _light; do
+        [ -z "$_name" ] && continue
+        _key="$(printf '%s' "$_name" | tr '[:upper:]' '[:lower:]')"
+        if [ "$_key" = "$PRESET_COLOR_NORM" ]; then
+            MOTD_COLOR="$_base"
+            MOTD_COLOR_NAME="$_name"
+            PRESET_MATCHED=true
+            break
+        fi
+    done <<< "$_COLOR_TABLE"
+
     if [ "$PRESET_MATCHED" = true ]; then
         ui_success "Using preset color: $MOTD_COLOR_NAME ($MOTD_COLOR)"
+    elif [[ "$PRESET_COLOR" =~ ^#[0-9A-Fa-f]{6}$ ]]; then
+        MOTD_COLOR="$PRESET_COLOR"
+        MOTD_COLOR_NAME="custom"
+        ui_success "Using custom color: $MOTD_COLOR"
+    else
+        ui_warning "Invalid color '$PRESET_COLOR', using default (Cello)"
     fi
 # Interactive mode if TTY and not --non-interactive
 elif [ -t 0 ] && [ "$NON_INTERACTIVE" = false ]; then

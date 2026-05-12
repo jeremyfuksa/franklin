@@ -131,3 +131,15 @@ GLYPH_ERROR = "✗"
 MOTD_MAX_WIDTH = 80
 MOTD_MIN_WIDTH = 40
 MOTD_BORDER_CHAR = "─"
+
+
+if __name__ == "__main__":
+    # Emit the canonical Campfire color table for install.sh to consume.
+    # Format: NAME|BASE|DARK|LIGHT, one color per line. Stdlib-only so this
+    # works during bootstrap before the Franklin venv is set up.
+    import sys
+
+    for _name, _variants in CAMPFIRE_COLORS.items():
+        sys.stdout.write(
+            f"{_name}|{_variants['base']}|{_variants['dark']}|{_variants['light']}\n"
+        )
