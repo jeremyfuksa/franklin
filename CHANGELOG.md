@@ -7,6 +7,28 @@ and the project aims to follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Fixed
+
+- **Custom hex MOTD colors now actually render.** `franklin config --color "#abcdef"` previously wrote `MOTD_COLOR_NAME="custom"` and `MOTD_COLOR="#abcdef"` to the config, but `load_motd_color()` only read `MOTD_COLOR_NAME` — since `"custom"` isn't a known palette name, it silently fell back to the default Cello banner. The loader now reads `MOTD_COLOR` when the name is `"custom"` (or any unknown name with a valid hex stored), synthesizes `dark`/`light` variants via HLS shifts to preserve the MOTD's visual hierarchy, and returns them. Verified with a round-trip test.
+- **First-run color picker no longer warns on valid input.** `_parse_numeric_selection` previously stripped non-digits, so `1abc` returned `1` — coincidentally the default. The "invalid choice" heuristic at the call site then misfired for `1` itself too. The parser now returns a `(index, was_valid)` tuple, and both call sites print the warning only on genuinely unparseable input.
+
+### Changed
+
+- **`franklin update` and `update-all` now run `git pull --ff-only`.** A regular `git pull` will create a merge commit if the upstream history has been rewritten or a malicious remote is configured. `--ff-only` refuses to merge unfamiliar history and surfaces the problem as an error, so the install tree never silently absorbs unverified changes.
+- **MOTD primary-IP detection no longer dials Google DNS.** `get_ip_address()` previously opened a UDP socket to `8.8.8.8:80` on every shell start to discover the outbound interface IP. It now walks `psutil.net_if_addrs()` for the first non-loopback IPv4 address on an up interface — fully offline, no third-party reference, no surprising telemetry from a shell prompt.
+- **`bin/franklin` shim prefers the Franklin-managed venv Python.** Previously it always ran `python3 -m lib.main`, which on most systems means system Python — without `typer`, `rich`, or `psutil`. Now it execs `~/.local/share/franklin/venv/bin/python3` when present, falling back to system Python only if the venv hasn't been set up yet.
+- **`install.sh` color name → hex table is generated from `lib/constants.py`** rather than duplicated as a 15-entry bash case statement. The CLI and the shell installer now share a single source of truth: `python3 lib/constants.py` emits `NAME|BASE|DARK|LIGHT` lines (stdlib-only so it works pre-venv), and `install.sh` parses that. A test (`test_constants_emit_format`) guards against drift.
+- **`bootstrap.sh` now uses `set -euo pipefail`** (was `set -e`) to match the project style guide and fail loudly when pipelines like `git clone … | sed …` swallow non-zero status from the upstream command.
+
+### Security
+
+- **`bootstrap.sh --dir` is now validated** before the script invokes `rm -rf` on it. Empty strings, `/`, `$HOME` itself, and paths outside `$HOME`/`/tmp`/`/var/tmp` are refused with a clear error. A typo in the documented `curl | sh -s -- --dir <path>` entry point can no longer silently nuke `/`, `/etc`, or the user's home directory.
+
+### Internal
+
+- Narrowed the broad `except Exception:` clauses in `motd.py` (disk stats, memory stats, services lookup) to specific `(OSError, psutil.Error, subprocess.SubprocessError, …)` tuples, so real bugs surface as crashes instead of being swallowed into MOTD `??` placeholders.
+- Removed two local `import re` statements in `main.py` that shadowed the module-level import.
+
 ## [2.1.3] - 2026-04-18
 
 ### Changed

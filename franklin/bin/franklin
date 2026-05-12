@@ -31,4 +31,11 @@ fi
 export PYTHONPATH="${FRANKLIN_ROOT}/src:${PYTHONPATH:-}"
 
 # --- Execute the Python CLI ---
+# Prefer the Franklin-managed venv when present — system python3 usually
+# lacks typer/rich/psutil, so falling through to it produces a confusing
+# ModuleNotFoundError on first run.
+VENV_PYTHON="${HOME}/.local/share/franklin/venv/bin/python3"
+if [ -x "$VENV_PYTHON" ]; then
+    exec "$VENV_PYTHON" -m lib.main "$@"
+fi
 exec python3 -m lib.main "$@"

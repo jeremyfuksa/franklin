@@ -260,12 +260,127 @@ class TestMOTD:
         """Test that load_motd_color returns valid defaults."""
         from lib.motd import load_motd_color
         from lib.constants import CAMPFIRE_COLORS
-        
+
         name, colors = load_motd_color()
         assert name in CAMPFIRE_COLORS or name == "custom"
         assert "base" in colors
         assert "dark" in colors
         assert "light" in colors
+
+    def test_load_motd_color_custom_hex_roundtrip(self, tmp_path, monkeypatch):
+        """Custom hex colors must actually render — not silently fall back to default.
+
+        Regression test for the bug where save_color('custom', '#abcdef') wrote
+        MOTD_COLOR_NAME='custom' but load_motd_color only ever read the name,
+        so the MOTD always rendered in Cello regardless of the saved hex.
+        """
+        import lib.constants as const
+        import lib.motd as motd
+
+        cfg = tmp_path / "config.env"
+        cfg.write_text('MOTD_COLOR_NAME="custom"\nMOTD_COLOR="#aabbcc"\n')
+        monkeypatch.setattr(const, "CONFIG_FILE", cfg)
+        monkeypatch.setattr(motd, "CONFIG_FILE", cfg)
+
+        name, colors = motd.load_motd_color()
+        assert name == "custom"
+        assert colors["base"].lower() == "#aabbcc"
+        # dark/light variants should be derived hex, not the default palette
+        assert colors["dark"].lower() != "#3e4f66"  # Cello's dark
+        assert colors["light"].lower() != "#acbbcc"  # Cello's light
+
+    def test_load_motd_color_unknown_name_falls_back(self, tmp_path, monkeypatch):
+        """Unknown color names without a valid hex must fall back to the default."""
+        import lib.constants as const
+        import lib.motd as motd
+        from lib.constants import DEFAULT_CAMPFIRE_COLOR
+
+        cfg = tmp_path / "config.env"
+        cfg.write_text('MOTD_COLOR_NAME="NonsenseName"\n')
+        monkeypatch.setattr(const, "CONFIG_FILE", cfg)
+        monkeypatch.setattr(motd, "CONFIG_FILE", cfg)
+
+        name, _ = motd.load_motd_color()
+        assert name == DEFAULT_CAMPFIRE_COLOR
+
+
+class TestConstantsEmitter:
+    """Tests for the constants.py shell-readable emitter (used by install.sh)."""
+
+    def test_constants_emit_format(self):
+        """Running constants.py as a script must emit NAME|BASE|DARK|LIGHT per line."""
+        from pathlib import Path
+        import subprocess
+        import sys
+        import re
+
+        constants_path = (
+            Path(__file__).parent.parent / "franklin" / "src" / "lib" / "constants.py"
+        )
+        result = subprocess.run(
+            [sys.executable, str(constants_path)],
+            capture_output=True,
+            text=True,
+            check=True,
+        )
+        lines = [ln for ln in result.stdout.splitlines() if ln.strip()]
+        assert lines, "constants.py emitter produced no output"
+
+        from lib.constants import CAMPFIRE_COLORS
+
+        # Every color in CAMPFIRE_COLORS must appear once in the emitter output —
+        # this is the drift guard between install.sh's parser and the Python source.
+        emitted_names = set()
+        hex_re = re.compile(r"^#[0-9a-fA-F]{6}$")
+        for line in lines:
+            parts = line.split("|")
+            assert len(parts) == 4, f"expected 4 fields, got {parts!r}"
+            name, base, dark, light = parts
+            emitted_names.add(name)
+            assert hex_re.match(base), f"{name} base {base!r} not valid hex"
+            assert hex_re.match(dark), f"{name} dark {dark!r} not valid hex"
+            assert hex_re.match(light), f"{name} light {light!r} not valid hex"
+
+        assert emitted_names == set(CAMPFIRE_COLORS.keys()), (
+            f"emitter/CAMPFIRE_COLORS drift: "
+            f"emitter-only={emitted_names - set(CAMPFIRE_COLORS.keys())}, "
+            f"colors-only={set(CAMPFIRE_COLORS.keys()) - emitted_names}"
+        )
+
+
+class TestSelectionParser:
+    """Tests for _parse_numeric_selection (the first-run color picker parser)."""
+
+    def test_empty_input_returns_default_and_valid(self):
+        from lib.main import _parse_numeric_selection
+
+        idx, valid = _parse_numeric_selection("", default_idx=3, max_idx=10)
+        assert (idx, valid) == (3, True)
+
+    def test_in_range_number_is_valid(self):
+        from lib.main import _parse_numeric_selection
+
+        idx, valid = _parse_numeric_selection("7", default_idx=3, max_idx=10)
+        assert (idx, valid) == (7, True)
+
+    def test_out_of_range_is_invalid(self):
+        from lib.main import _parse_numeric_selection
+
+        idx, valid = _parse_numeric_selection("99", default_idx=3, max_idx=10)
+        assert (idx, valid) == (3, False)
+
+    def test_garbage_with_default_digit_no_false_positive(self):
+        """'1abc' must NOT be silently accepted as '1'.
+
+        Previously _parse_numeric_selection stripped non-digits, so '1abc'
+        returned 1 — coincidentally the default. The caller's "invalid choice"
+        heuristic then mis-fired for '1' as well, producing inconsistent UX.
+        """
+        from lib.main import _parse_numeric_selection
+
+        idx, valid = _parse_numeric_selection("1abc", default_idx=1, max_idx=10)
+        assert valid is False
+        assert idx == 1  # falls back to default
 
 
 if __name__ == "__main__":

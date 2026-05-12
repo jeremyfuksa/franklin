@@ -11,7 +11,7 @@
 #   --dir DIR   Installation directory (default: ~/.local/share/franklin)
 #   --ref REF   Git branch or tag to checkout (default: main)
 
-set -e
+set -euo pipefail
 
 # --- Defaults ---
 INSTALL_DIR="${HOME}/.local/share/franklin"
@@ -44,6 +44,40 @@ while [ $# -gt 0 ]; do
             ;;
     esac
 done
+
+# --- Validate --dir ---
+# bootstrap.sh later runs `rm -rf "$INSTALL_DIR"` if the path exists, so a
+# typo or unset $HOME could nuke important data. Require the resolved
+# target to be safely scoped (under $HOME, /tmp, or /var/tmp) and refuse
+# obvious foot-guns ('', '/', $HOME itself).
+_bootstrap_validate_install_dir() {
+    local raw="$1"
+    if [ -z "$raw" ]; then
+        echo "ERROR: --dir cannot be empty" >&2
+        exit 1
+    fi
+    # Strip trailing slash for comparisons (but keep '/' as '/').
+    local normalized="$raw"
+    case "$normalized" in
+        */) normalized="${normalized%/}" ;;
+    esac
+    [ -z "$normalized" ] && normalized="/"
+    case "$normalized" in
+        /|"$HOME"|"")
+            echo "ERROR: --dir refuses unsafe target: $raw" >&2
+            exit 1
+            ;;
+    esac
+    case "$normalized" in
+        "$HOME"/*|/tmp/*|/var/tmp/*) ;;
+        *)
+            echo "ERROR: --dir must be under \$HOME, /tmp, or /var/tmp; got: $raw" >&2
+            echo "       (refused because bootstrap.sh will 'rm -rf' this path)" >&2
+            exit 1
+            ;;
+    esac
+}
+_bootstrap_validate_install_dir "$INSTALL_DIR"
 
 # --- Minimal UI Functions (Bash) ---
 # NOTE: This is intentionally duplicated from lib/ui.sh because bootstrap runs

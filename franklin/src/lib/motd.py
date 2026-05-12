@@ -9,8 +9,10 @@ Implements the Campfire-style MOTD banner with:
 - System services status (grid layout)
 """
 
+import colorsys
 import os
 import platform
+import re
 import socket
 import subprocess
 import shutil
@@ -31,6 +33,36 @@ from .constants import (
 )
 
 
+_HEX_COLOR_RE = re.compile(r"^#[0-9a-fA-F]{6}$")
+
+
+def _derive_variants(hex_color: str) -> Dict[str, str]:
+    """Derive base/dark/light variants from a single hex color via HLS shifts.
+
+    Mirrors the spacing of the curated CAMPFIRE_COLORS entries (dark ~30%
+    darker, light ~50% lighter in HLS L space) so a user-supplied custom
+    color slots into the existing MOTD layout without looking out of place.
+    """
+    hex_value = hex_color.lstrip("#")
+    r = int(hex_value[0:2], 16) / 255
+    g = int(hex_value[2:4], 16) / 255
+    b = int(hex_value[4:6], 16) / 255
+    h, l, s = colorsys.rgb_to_hls(r, g, b)
+
+    def _to_hex(hh: float, ll: float, ss: float) -> str:
+        ll = max(0.0, min(1.0, ll))
+        rr, gg, bb = colorsys.hls_to_rgb(hh, ll, ss)
+        return "#{:02x}{:02x}{:02x}".format(
+            int(round(rr * 255)), int(round(gg * 255)), int(round(bb * 255))
+        )
+
+    return {
+        "base": _to_hex(h, l, s),
+        "dark": _to_hex(h, l * 0.65, s),
+        "light": _to_hex(h, l + (1 - l) * 0.5, s),
+    }
+
+
 def get_franklin_version() -> str:
     """Read Franklin version from VERSION file."""
     version_file = Path(__file__).parent.parent.parent.parent / "VERSION"
@@ -48,13 +80,31 @@ def get_hostname() -> str:
 
 
 def get_ip_address() -> str:
-    """Get the primary IP address."""
+    """Get the primary non-loopback IPv4 address.
+
+    Uses psutil's local interface table rather than the older trick of
+    opening a UDP socket to 8.8.8.8 — that trick references an external
+    address every time the MOTD renders (every shell start), which is
+    surprising in a tool that's otherwise fully offline.
+    """
     try:
-        with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as s:
-            s.connect(("8.8.8.8", 80))
-            return s.getsockname()[0]
-    except (socket.error, OSError, TimeoutError):
+        addrs = psutil.net_if_addrs()
+        stats = psutil.net_if_stats()
+    except (psutil.Error, OSError):
         return "0.0.0.0"
+
+    for iface, addr_list in addrs.items():
+        if iface in stats and not stats[iface].isup:
+            continue
+        for addr in addr_list:
+            if (
+                addr.family == socket.AF_INET
+                and addr.address
+                and not addr.address.startswith("127.")
+                and addr.address != "0.0.0.0"
+            ):
+                return addr.address
+    return "0.0.0.0"
 
 
 def get_os_version() -> str:
@@ -117,7 +167,7 @@ def get_disk_stats() -> Tuple[str, float, str, str]:
 
         bar = create_progress_bar(percent)
         return bar, percent, f"{used_gb:.0f}G", f"{total_gb:.0f}G"
-    except Exception:
+    except (OSError, ZeroDivisionError):
         return "|??????????|", 0, "??", "??"
 
 
@@ -128,7 +178,7 @@ def get_memory_stats() -> Tuple[str, str]:
         used_gb = mem.used / (1024**3)
         total_gb = mem.total / (1024**3)
         return f"{used_gb:.0f}G", f"{total_gb:.0f}G"
-    except Exception:
+    except (psutil.Error, OSError):
         return "??", "??"
 
 
@@ -190,8 +240,8 @@ def get_system_services() -> List[str]:
     running_services = []
     system = platform.system()
 
-    try:
-        if system == "Darwin":
+    if system == "Darwin":
+        try:
             # macOS: Check for specific services via launchctl
             result = subprocess.run(
                 ["launchctl", "list"],
@@ -200,34 +250,40 @@ def get_system_services() -> List[str]:
                 check=True,
                 timeout=2,
             )
-            # Check which monitored services are running using word boundary matching
-            for service in monitored_services:
-                import re
+        except (
+            FileNotFoundError,
+            subprocess.CalledProcessError,
+            subprocess.TimeoutExpired,
+            OSError,
+        ):
+            return running_services
+        # Check which monitored services are running using word boundary matching
+        for service in monitored_services:
+            for line in result.stdout.split("\n"):
+                if re.search(
+                    r"\b" + re.escape(service) + r"\b", line, re.IGNORECASE
+                ):
+                    running_services.append(service)
+                    break
 
-                for line in result.stdout.split("\n"):
-                    if re.search(
-                        r"\b" + re.escape(service) + r"\b", line, re.IGNORECASE
-                    ):
-                        running_services.append(service)
-                        break
-
-        elif system == "Linux":
-            # Linux: Use systemctl to check each monitored service
-            for service in monitored_services:
-                try:
-                    result = subprocess.run(
-                        ["systemctl", "is-active", service],
-                        capture_output=True,
-                        text=True,
-                        timeout=1,
-                    )
-                    if result.stdout.strip() == "active":
-                        running_services.append(service)
-                except Exception:
-                    continue
-
-    except Exception:
-        pass
+    elif system == "Linux":
+        # Linux: Use systemctl to check each monitored service
+        for service in monitored_services:
+            try:
+                result = subprocess.run(
+                    ["systemctl", "is-active", service],
+                    capture_output=True,
+                    text=True,
+                    timeout=1,
+                )
+            except (
+                FileNotFoundError,
+                subprocess.TimeoutExpired,
+                OSError,
+            ):
+                continue
+            if result.stdout.strip() == "active":
+                running_services.append(service)
 
     return running_services
 
@@ -258,9 +314,14 @@ def load_motd_color() -> Tuple[str, Dict[str, str]]:
     Load the user's MOTD color preference from config.
 
     Returns:
-        Tuple of (color_name, color_dict) with dark/base/light variants
+        Tuple of (color_name, color_dict) with dark/base/light variants.
+
+    Custom hex colors (MOTD_COLOR_NAME="custom") have dark/light variants
+    synthesized via HLS shifts so the MOTD layout still has visual hierarchy.
+    Unknown names fall back to DEFAULT_CAMPFIRE_COLOR.
     """
     color_name = DEFAULT_CAMPFIRE_COLOR
+    color_hex: Optional[str] = None
 
     if CONFIG_FILE.exists():
         try:
@@ -268,15 +329,21 @@ def load_motd_color() -> Tuple[str, Dict[str, str]]:
                 for line in f:
                     if line.startswith("MOTD_COLOR_NAME="):
                         color_name = line.split("=", 1)[1].strip().strip('"')
-                        break
+                    elif line.startswith("MOTD_COLOR="):
+                        color_hex = line.split("=", 1)[1].strip().strip('"')
         except (FileNotFoundError, IOError, OSError):
             pass
 
-    # If custom color or unknown, use default
-    if color_name not in CAMPFIRE_COLORS:
-        color_name = DEFAULT_CAMPFIRE_COLOR
+    if color_name in CAMPFIRE_COLORS:
+        return color_name, CAMPFIRE_COLORS[color_name]
 
-    return color_name, CAMPFIRE_COLORS[color_name]
+    # Custom color path: synthesize variants from the saved hex. Anything that
+    # doesn't validate as a hex code falls back to the default palette so the
+    # MOTD still renders.
+    if color_hex and _HEX_COLOR_RE.match(color_hex):
+        return "custom", _derive_variants(color_hex)
+
+    return DEFAULT_CAMPFIRE_COLOR, CAMPFIRE_COLORS[DEFAULT_CAMPFIRE_COLOR]
 
 
 def render_motd(width: Optional[int] = None) -> None:
