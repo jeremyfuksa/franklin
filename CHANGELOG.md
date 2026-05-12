@@ -7,6 +7,8 @@ and the project aims to follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [2.1.4] - 2026-05-12
+
 ### Fixed
 
 - **Custom hex MOTD colors now actually render.** `franklin config --color "#abcdef"` previously wrote `MOTD_COLOR_NAME="custom"` and `MOTD_COLOR="#abcdef"` to the config, but `load_motd_color()` only read `MOTD_COLOR_NAME` — since `"custom"` isn't a known palette name, it silently fell back to the default Cello banner. The loader now reads `MOTD_COLOR` when the name is `"custom"` (or any unknown name with a valid hex stored), synthesizes `dark`/`light` variants via HLS shifts to preserve the MOTD's visual hierarchy, and returns them. Verified with a round-trip test.
