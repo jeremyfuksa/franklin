@@ -7,10 +7,12 @@ and the project aims to follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [2.1.5] - 2026-05-14
+
 ### Fixed
 
-- **MOTD RAM/disk no longer collapses to `0G/0G` on sub-1GiB devices.** Both `get_memory_stats()` and `get_disk_stats()` formatted gigabytes with `{:.0f}`, so a Raspberry Pi Zero 2W (512MB RAM) rounded both used and total to `0G`. A new `format_bytes_pair()` helper picks an adaptive unit — sub-1GiB totals render in `M`, multi-GiB totals keep the existing `G` format — so the Pi Zero now shows e.g. `RAM 200M/512M` and normal machines remain unchanged.
-- **Starship no longer warns on slow ARM SBCs.** The default `scan_timeout` of 30ms was too tight for a Pi Zero 2W's single-core ARM CPU, so every prompt printed `Scanning current directory timed out`. `franklin/config/starship.toml` now sets `scan_timeout = 500`, which comfortably covers slow devices while still aborting on truly stuck filesystems. Fast machines are unaffected — the setting is a ceiling, not a delay.
+- **MOTD RAM/disk no longer collapses to `0G/0G` on sub-1GiB devices.** Both `get_memory_stats()` and `get_disk_stats()` formatted gigabytes with `{:.0f}`, so a Raspberry Pi Zero 2W (512MB RAM) rounded both used and total to `0G`. A new `format_bytes_pair()` helper picks an adaptive unit — sub-1GiB totals render in `M`, multi-GiB totals keep the existing `G` format — so the Pi Zero now shows e.g. `RAM 200M/512M` and normal machines remain unchanged. (#23)
+- **Starship no longer warns on slow ARM SBCs.** The default `scan_timeout` of 30ms was too tight for a Pi Zero 2W's single-core ARM CPU, so every prompt printed `Scanning current directory timed out`. `franklin/config/starship.toml` now sets `scan_timeout = 500`, which comfortably covers slow devices while still aborting on truly stuck filesystems. Fast machines are unaffected — the setting is a ceiling, not a delay. (#24)
 
 ## [2.1.4] - 2026-05-12
 
