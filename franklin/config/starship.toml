@@ -26,6 +26,12 @@ $character"""
 # Disable scanning for new versions
 add_newline = false
 
+# Default is 30ms — too tight for slow ARM SBCs (e.g. Pi Zero 2W) where
+# scanning a moderately-sized repo races past the deadline and starship
+# prints a runtime warning on every prompt. 500ms is generous enough to
+# cover those devices while still aborting on truly stuck filesystems.
+scan_timeout = 500
+
 [character]
 success_symbol = "[❯](bold green)"
 error_symbol = "[❯](bold red)"
