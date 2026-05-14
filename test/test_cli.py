@@ -241,12 +241,34 @@ class TestMOTD:
     def test_get_disk_stats_returns_tuple(self):
         """Test that disk stats returns expected format."""
         from lib.motd import get_disk_stats
-        
+
         bar, percent, used, total = get_disk_stats()
         assert isinstance(bar, str)
         assert isinstance(percent, (int, float))
         assert isinstance(used, str)
         assert isinstance(total, str)
+
+    def test_format_bytes_pair_sub_gigabyte_uses_megabytes(self):
+        """Sub-1GiB totals must render in M, not collapse to '0G/0G'.
+
+        Regression test for the Pi Zero 2W (512MB RAM) case: integer-formatted
+        gigabytes rounded both used and total to 0G, making the MOTD show
+        "RAM 0G/0G".
+        """
+        from lib.motd import format_bytes_pair
+
+        # Pi Zero 2W: ~200MiB used out of 512MiB total
+        used, total = format_bytes_pair(200 * 1024**2, 512 * 1024**2)
+        assert used.endswith("M") and total.endswith("M")
+        assert used != "0M" and total != "0M"
+
+    def test_format_bytes_pair_gigabyte_range_uses_gigabytes(self):
+        """Multi-GiB totals keep the existing G-suffixed format."""
+        from lib.motd import format_bytes_pair
+
+        used, total = format_bytes_pair(8 * 1024**3, 16 * 1024**3)
+        assert used == "8G"
+        assert total == "16G"
 
     def test_create_progress_bar(self):
         """Test progress bar generation."""
