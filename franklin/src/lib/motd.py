@@ -157,16 +157,26 @@ def create_progress_bar(percent: float, width: int = 10) -> str:
     return f"|{'█' * filled}{'░' * empty}|"
 
 
+def format_bytes_pair(used: float, total: float) -> Tuple[str, str]:
+    """Format a used/total byte pair with a consistent adaptive unit.
+
+    Sub-1GiB totals render in MiB so low-memory devices (e.g. Pi Zero 2W
+    with 512MB RAM) don't collapse to "0G/0G" after integer rounding.
+    """
+    if total < 1024**3:
+        return f"{used / (1024**2):.0f}M", f"{total / (1024**2):.0f}M"
+    return f"{used / (1024**3):.0f}G", f"{total / (1024**3):.0f}G"
+
+
 def get_disk_stats() -> Tuple[str, float, str, str]:
     """Get disk usage statistics."""
     try:
         disk = shutil.disk_usage("/")
-        total_gb = disk.total / (1024**3)
-        used_gb = disk.used / (1024**3)
         percent = (disk.used / disk.total) * 100
+        used, total = format_bytes_pair(disk.used, disk.total)
 
         bar = create_progress_bar(percent)
-        return bar, percent, f"{used_gb:.0f}G", f"{total_gb:.0f}G"
+        return bar, percent, used, total
     except (OSError, ZeroDivisionError):
         return "|??????????|", 0, "??", "??"
 
@@ -175,9 +185,7 @@ def get_memory_stats() -> Tuple[str, str]:
     """Get memory usage statistics."""
     try:
         mem = psutil.virtual_memory()
-        used_gb = mem.used / (1024**3)
-        total_gb = mem.total / (1024**3)
-        return f"{used_gb:.0f}G", f"{total_gb:.0f}G"
+        return format_bytes_pair(mem.used, mem.total)
     except (psutil.Error, OSError):
         return "??", "??"
 
