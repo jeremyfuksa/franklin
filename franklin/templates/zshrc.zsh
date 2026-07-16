@@ -202,13 +202,27 @@ setopt EXTENDED_HISTORY        # Record timestamp in history
 # Sheldon is a fast, modern plugin manager. Loaded BEFORE compinit so that
 # plugins which extend fpath (zsh-completions) are picked up by the
 # completion system.
+#
+# Plugins that register completions (e.g. oh-my-zsh's git plugin) call
+# `compdef` at source time, but compdef only exists once compinit has run.
+# Queue those calls in a stub and replay them right after compinit defines
+# the real compdef.
+typeset -ga _franklin_compdef_queue=()
+compdef() { _franklin_compdef_queue+=("${(j: :)${(@q)@}}"); }
+
 if command -v sheldon >/dev/null 2>&1; then
     eval "$(sheldon source)"
 fi
 
 # --- Completion System ---
 autoload -Uz compinit
-compinit
+compinit  # (re)defines the real compdef, replacing the queue stub above
+
+# Replay compdef calls queued during plugin loading
+for _franklin_compdef_args in "${_franklin_compdef_queue[@]}"; do
+    eval "compdef ${_franklin_compdef_args}"
+done
+unset _franklin_compdef_args _franklin_compdef_queue
 
 # Case-insensitive completion
 zstyle ':completion:*' matcher-list 'm:{a-zA-Z}={A-Za-z}'
