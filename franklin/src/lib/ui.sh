@@ -130,5 +130,9 @@ show_color() {
     local b=$((16#${hex:4:2}))
 
     # ANSI 24-bit color: \033[38;2;R;G;Bm for foreground
-    printf "  \033[38;2;%d;%d;%dm████\033[0m  %-15s (#%s)\n" "$r" "$g" "$b" "$name" "$hex" >&2
+    if [ "$FRANKLIN_UI_USE_COLOR" = true ]; then
+        printf "  \033[38;2;%d;%d;%dm████\033[0m  %-15s (#%s)\n" "$r" "$g" "$b" "$name" "$hex" >&2
+    else
+        printf "  %-15s (#%s)\n" "$name" "$hex" >&2
+    fi
 }

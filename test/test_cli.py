@@ -405,5 +405,64 @@ class TestSelectionParser:
         assert idx == 1  # falls back to default
 
 
+    def test_bracketed_paste_marker_is_stripped(self):
+        from lib.main import _parse_numeric_selection
+
+        idx, valid = _parse_numeric_selection("\x1b[200~5", default_idx=1, max_idx=14)
+        assert valid is True
+        assert idx == 5
+
+
+class TestConfigPersistence:
+    """Tests for in-place config.env editing."""
+
+    def test_save_config_keys_preserves_unknown_lines(self, tmp_path, monkeypatch):
+        import lib.main as main_mod
+
+        cfg = tmp_path / "config.env"
+        cfg.write_text(
+            "# Franklin Configuration\n"
+            'MOTD_COLOR_NAME="Cello"\n'
+            'MOTD_COLOR="#607a97"\n'
+            'SOME_FUTURE_KEY="keep-me"\n'
+            'MONITORED_SERVICES="nginx"\n'
+        )
+        monkeypatch.setattr(main_mod, "CONFIG_DIR", tmp_path)
+        monkeypatch.setattr(main_mod, "CONFIG_FILE", cfg)
+
+        main_mod._save_config_keys(
+            {"MOTD_COLOR_NAME": "Ember", "MOTD_COLOR": "#d97706"}
+        )
+        content = cfg.read_text()
+        assert 'MOTD_COLOR_NAME="Ember"' in content
+        assert 'MOTD_COLOR="#d97706"' in content
+        assert 'SOME_FUTURE_KEY="keep-me"' in content
+        assert 'MONITORED_SERVICES="nginx"' in content
+
+    def test_save_config_keys_uncomments_placeholder(self, tmp_path, monkeypatch):
+        import lib.main as main_mod
+
+        cfg = tmp_path / "config.env"
+        cfg.write_text('# MONITORED_SERVICES=""\n')
+        monkeypatch.setattr(main_mod, "CONFIG_DIR", tmp_path)
+        monkeypatch.setattr(main_mod, "CONFIG_FILE", cfg)
+
+        main_mod._save_config_keys({"MONITORED_SERVICES": "nginx,redis"})
+        assert cfg.read_text() == 'MONITORED_SERVICES="nginx,redis"\n'
+
+    def test_save_config_keys_appends_missing_key(self, tmp_path, monkeypatch):
+        import lib.main as main_mod
+
+        cfg = tmp_path / "config.env"
+        cfg.write_text('MOTD_COLOR_NAME="Cello"\n')
+        monkeypatch.setattr(main_mod, "CONFIG_DIR", tmp_path)
+        monkeypatch.setattr(main_mod, "CONFIG_FILE", cfg)
+
+        main_mod._save_config_keys({"MONITORED_SERVICES": "sshd"})
+        content = cfg.read_text()
+        assert 'MOTD_COLOR_NAME="Cello"' in content
+        assert content.endswith('MONITORED_SERVICES="sshd"\n')
+
+
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])
