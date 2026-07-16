@@ -7,6 +7,37 @@ and the project aims to follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [2.2.0] - 2026-07-15
+
+### Added
+
+- **`franklin uninstall`** restores the pre-Franklin shell setup: removes the Franklin-managed symlinks (`~/.zshrc`, sheldon `plugins.toml`, `starship.toml`, mise `config.toml`, `~/.local/bin/franklin` — only when they actually point into the Franklin install), restores the most recent pre-install backup of `.zshrc`/`.zprofile`/`.zshenv`, and prints the on-disk paths (install root, config, local overrides) left for manual removal.
+- **`franklin config --services "nginx,redis"`** sets the MOTD `MONITORED_SERVICES` list from the CLI (pass `""` to clear). Previously the only way to configure monitored services was hand-editing `config.env`.
+- **`franklin doctor` checks more of what `install.sh` sets up**: git (required by `franklin update`), mise, eza (informational — ls aliases degrade gracefully), and whether `~/.zshrc` is actually the Franklin-managed symlink. `doctor --json` output now includes a `"status": "ok"/"fail"` field so scripts don't have to rely solely on the exit code.
+- **`install.sh`'s interactive color picker now shows all 14 Campfire colors** (previously 7 + custom), generated from the same `constants.py` table that drives `--color` matching. The legacy "Black Rock" alias is hidden from the menu (it duplicates Stone) but still accepted by `--color`.
+
+### Fixed
+
+- **Re-running `bootstrap.sh` no longer destroys your backups.** Pre-install snapshots live at `<install root>/backups`, inside the directory bootstrap `rm -rf`s on reinstall. Bootstrap now stashes `backups/` to a temp dir before removal and restores it into the fresh clone (or back in place if the clone fails).
+- **`bootstrap.sh` reports failure when `git clone` fails even under plain `sh`.** The clone's output is piped through `sed`; under a shell without effective `pipefail` (the documented `curl | sh` invocation) the pipeline's exit status was sed's, so a bad `--ref` or network failure sailed past "✔ Franklin fetched" and died later with a confusing `cd` error. Bootstrap now guards the pipeline and verifies the clone landed before proceeding.
+- **Custom install locations (`bootstrap.sh --dir`) now work end-to-end.** The zshrc resolves `FRANKLIN_ROOT` from the `~/.zshrc` symlink target (falling back to the default path if the file was copied), and `install.sh` keys the venv and backup dirs off the actual install root instead of hardcoding `~/.local/share/franklin`.
+- **The Franklin venv no longer shadows mise/system Python in every shell.** The zshrc previously put `<root>/venv/bin` first on `PATH`, so its `python3`/`pip` symlinks won over mise-managed Python and a bare `pip install` landed packages in Franklin's venv. Now only the `franklin` entrypoint is exposed, via a symlink in `~/.local/bin` created by `install.sh`.
+- **Sheldon plugins now load before `compinit`**, so `zsh-completions` (which extends `fpath`) actually takes effect. Previously plugins loaded after the completion system had already been initialised.
+- **History substring search now works.** The `zsh-history-substring-search` plugin defines widgets but does not bind keys; the zshrc bound the arrows to plain `up-line-or-search` and assumed the plugin would "enhance" them. Up/Down now bind to `history-substring-search-up/down` when the plugin is loaded, with the prefix-search fallback kept for when it isn't.
+- **`franklin update` / `update-all` re-sync the venv after pulling.** New dependencies declared in `pyproject.toml` now install via `pip install -e`; previously an editable install picked up code changes but silently missed new dependencies.
+- **`franklin config` no longer discards unknown keys in `config.env`.** Color and services updates now edit their keys in place and preserve everything else; previously the file was rewritten from scratch keeping only `MONITORED_SERVICES`.
+- **The first-run color prompt no longer fires from `franklin motd` or `franklin doctor`** (it could block shell startup or a `--json` pipeline if `config.env` was missing), and it requires stdin to be a TTY.
+- **A pre-existing `.zshrc` symlink's target is recorded in the backup** (`.zshrc.symlink-target`) before the installer replaces it; previously symlinked dotfiles (e.g. into a dotfiles repo) were removed with no record.
+- **The zshrc `TERM` fallback is skipped when `infocmp` is missing**, instead of rewriting a valid `TERM` on systems without ncurses-bin.
+- **Menu input pasted with bracketed-paste markers** (`\x1b[200~5`) now parses correctly in the CLI color pickers.
+- **`update-all --dry-run --system` on Fedora** no longer reports a false failure: `dnf upgrade --assumeno` exits 1 when updates were available and declined, which is now treated as success for the dry run.
+- **MOTD layout degrades gracefully with long hostnames** (padding is clamped instead of going negative), the `VERSION` file is also looked up via the install root (not just the repo-relative path), and `install.sh`'s eza step refreshes the apt index if the main install skipped it.
+
+### Changed
+
+- `show_color` in `lib/ui.sh` honors `NO_COLOR`/non-TTY instead of always emitting ANSI swatches.
+- Stale references to nonexistent `FRANKLIN_UPDATE_MODE` / `FRANKLIN_UPDATE_TIMEOUT` / `FRANKLIN_BACKUP_DIR` env vars and `update-all.sh` were removed from the `~/.franklin.local.zsh` stub.
+
 ## [2.1.5] - 2026-05-14
 
 ### Fixed
