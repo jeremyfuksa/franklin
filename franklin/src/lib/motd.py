@@ -64,10 +64,20 @@ def _derive_variants(hex_color: str) -> Dict[str, str]:
 
 
 def get_franklin_version() -> str:
-    """Read Franklin version from VERSION file."""
-    version_file = Path(__file__).parent.parent.parent.parent / "VERSION"
-    if version_file.exists():
-        return version_file.read_text().strip()
+    """Read Franklin version from VERSION file.
+
+    Checks the install root first (works for any install layout), then falls
+    back to the repo-relative path (works for editable installs / PYTHONPATH
+    invocations where FRANKLIN_ROOT may not exist yet).
+    """
+    from .constants import FRANKLIN_ROOT
+
+    for version_file in (
+        FRANKLIN_ROOT / "VERSION",
+        Path(__file__).parent.parent.parent.parent / "VERSION",
+    ):
+        if version_file.exists():
+            return version_file.read_text().strip()
     return "unknown"
 
 
@@ -191,7 +201,7 @@ def get_memory_stats() -> Tuple[str, str]:
 
 
 def get_docker_containers() -> List[str]:
-    """Get list of running Docker containers (with mock data if none)."""
+    """Get list of running Docker containers (empty if Docker is unavailable)."""
     try:
         result = subprocess.run(
             ["docker", "ps", "--format", "{{.Names}}"],
@@ -408,7 +418,9 @@ def render_motd(width: Optional[int] = None) -> None:
     # Right-align version in base color
     version_text = f"🐢 {version}"
     current_len = len(f" > {hostname} ({ip})")
-    padding = width - current_len - len(version_text) - 1  # -1 for emoji width
+    # -1 for emoji width; clamp so long hostnames degrade to a single space
+    # instead of a negative repeat count silently deleting the separator.
+    padding = max(1, width - current_len - len(version_text) - 1)
     header_line.append(" " * padding)
     header_line.append(version_text, style=base)
 
@@ -428,7 +440,7 @@ def render_motd(width: Optional[int] = None) -> None:
 
     # Right-align OS version
     stats_text = f"  {disk_bar} {disk_pct:.0f}% {disk_used}/{disk_total}               RAM {mem_used}/{mem_total}"
-    os_padding = width - len(stats_text) - len(os_version)
+    os_padding = max(1, width - len(stats_text) - len(os_version))
     stats_line.append(" " * os_padding)
     stats_line.append(os_version, style=light)
 

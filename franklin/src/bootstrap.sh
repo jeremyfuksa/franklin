@@ -208,16 +208,44 @@ ui_section_end
 ui_header "Fetching Franklin"
 ui_branch "Repository: $REPO_URL (ref: $GIT_REF)"
 
-# Remove existing directory if present
+# Remove existing directory if present, preserving backups (install.sh stores
+# pre-install snapshots at $INSTALL_DIR/backups — they must survive reinstalls).
+BACKUP_STASH=""
 if [ -d "$INSTALL_DIR" ]; then
+    if [ -d "$INSTALL_DIR/backups" ]; then
+        BACKUP_STASH="$(mktemp -d "${TMPDIR:-/tmp}/franklin-backups.XXXXXX")"
+        ui_branch "Preserving existing backups"
+        mv "$INSTALL_DIR/backups" "$BACKUP_STASH/backups"
+    fi
     ui_branch "Removing existing installation at $INSTALL_DIR"
     rm -rf "$INSTALL_DIR"
 fi
 
-# Clone repository
+# Clone repository. The `if !` guard catches the failure under bash+pipefail;
+# the .git check below catches it when running under a plain `sh` whose
+# `set -o pipefail` isn't effective (the pipe makes the exit status sed's).
 mkdir -p "$(dirname "$INSTALL_DIR")"
-git clone --branch "$GIT_REF" --depth 1 "$REPO_URL" "$INSTALL_DIR" 2>&1 | \
-    sed 's/^/  /' >&2
+CLONE_OK=true
+if ! git clone --branch "$GIT_REF" --depth 1 "$REPO_URL" "$INSTALL_DIR" 2>&1 | \
+    sed 's/^/  /' >&2; then
+    CLONE_OK=false
+fi
+
+if [ "$CLONE_OK" = false ] || [ ! -d "$INSTALL_DIR/.git" ]; then
+    if [ -n "$BACKUP_STASH" ]; then
+        mkdir -p "$INSTALL_DIR"
+        mv "$BACKUP_STASH/backups" "$INSTALL_DIR/backups"
+        rmdir "$BACKUP_STASH" 2>/dev/null || true
+    fi
+    ui_error "git clone failed (ref: $GIT_REF). Check the ref name and network connectivity."
+fi
+
+# Restore preserved backups into the fresh clone
+if [ -n "$BACKUP_STASH" ]; then
+    mv "$BACKUP_STASH/backups" "$INSTALL_DIR/backups"
+    rmdir "$BACKUP_STASH" 2>/dev/null || true
+    ui_branch "Restored previous backups to $INSTALL_DIR/backups"
+fi
 
 ui_success "Franklin fetched to $INSTALL_DIR"
 ui_section_end

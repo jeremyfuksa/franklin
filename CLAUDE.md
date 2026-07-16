@@ -45,7 +45,8 @@ The `franklin` CLI provides these commands:
 | `franklin doctor [--json]` | Run diagnostic checks on the environment |
 | `franklin update [--dry-run] [--yes]` | Update Franklin core from git |
 | `franklin update-all [--dry-run] [--system]` | Update core, plugins, and optionally system packages |
-| `franklin config [--color NAME]` | Configure MOTD color interactively or via flag |
+| `franklin config [--color NAME] [--services LIST]` | Configure MOTD color/services interactively or via flags |
+| `franklin uninstall [--yes]` | Unlink Franklin and restore backed-up dotfiles |
 | `franklin motd` | Display the Message of the Day banner |
 | `franklin --version` | Show version |
 

@@ -3,7 +3,18 @@
 # A modern, cross-platform Zsh configuration
 
 # --- Environment Setup ---
-export FRANKLIN_ROOT="${HOME}/.local/share/franklin"
+# ~/.zshrc is a symlink to <root>/franklin/templates/zshrc.zsh, so resolve the
+# install root from the link target. This keeps custom install locations
+# (bootstrap --dir) working; fall back to the default path if the file was
+# copied instead of linked.
+if [[ -L "${HOME}/.zshrc" ]]; then
+    # :A resolves the symlink; three :h strip templates/ franklin/ -> root
+    _franklin_zshrc_target="${${:-${HOME}/.zshrc}:A}"
+    export FRANKLIN_ROOT="${_franklin_zshrc_target:h:h:h}"
+    unset _franklin_zshrc_target
+else
+    export FRANKLIN_ROOT="${HOME}/.local/share/franklin"
+fi
 export FRANKLIN_CONFIG="${HOME}/.config/franklin"
 
 # --- TERM Fallback ---
@@ -22,7 +33,10 @@ export FRANKLIN_CONFIG="${HOME}/.config/franklin"
 # escapes natively regardless of terminfo. Apps that check COLORTERM
 # (Starship, bat, nvim, fzf, delta, …) will then still emit truecolor
 # sequences instead of quantising to the 256-color palette implied by TERM.
-if [[ -n "${TERM:-}" ]] && ! infocmp -q "$TERM" >/dev/null 2>&1; then
+# (Guard on infocmp existing: without it we can't tell known from unknown
+# TERMs, and rewriting a valid TERM would be worse than doing nothing.)
+if [[ -n "${TERM:-}" ]] && command -v infocmp >/dev/null 2>&1 \
+    && ! infocmp -q "$TERM" >/dev/null 2>&1; then
     export TERM=xterm-256color
     : "${COLORTERM:=truecolor}"
     export COLORTERM
@@ -64,9 +78,12 @@ _franklin_mise_shims_bin() {
 _franklin_setup_path() {
     local new_path=""
 
-    # Priority directories (checked in order)
+    # Priority directories (checked in order).
+    # NOTE: the Franklin venv's bin/ is deliberately NOT added here — it
+    # contains python3/pip symlinks that would shadow mise-managed and system
+    # Python in every shell. install.sh symlinks just the `franklin`
+    # entrypoint into ~/.local/bin instead.
     local priority_dirs=(
-        "${FRANKLIN_ROOT}/venv/bin"
         "${HOME}/.local/bin"
     )
 
@@ -181,6 +198,14 @@ setopt HIST_IGNORE_SPACE       # Don't record commands starting with space
 setopt HIST_REDUCE_BLANKS      # Remove superfluous blanks
 setopt EXTENDED_HISTORY        # Record timestamp in history
 
+# --- Plugin Loading (Sheldon) ---
+# Sheldon is a fast, modern plugin manager. Loaded BEFORE compinit so that
+# plugins which extend fpath (zsh-completions) are picked up by the
+# completion system.
+if command -v sheldon >/dev/null 2>&1; then
+    eval "$(sheldon source)"
+fi
+
 # --- Completion System ---
 autoload -Uz compinit
 compinit
@@ -195,10 +220,15 @@ zstyle ':completion:*' list-colors "${(s.:.)LS_COLORS}"
 # Use Emacs-style keybindings
 bindkey -e
 
-# Bind Up/Down to history substring search (if plugin loaded)
-# This will be enhanced by the history-substring-search plugin
-bindkey '^[[A' up-line-or-search
-bindkey '^[[B' down-line-or-search
+# Bind Up/Down to history substring search. The plugin defines the widgets
+# but does not bind keys itself; fall back to prefix search if it's absent.
+if [[ -n "${widgets[history-substring-search-up]:-}" ]]; then
+    bindkey '^[[A' history-substring-search-up
+    bindkey '^[[B' history-substring-search-down
+else
+    bindkey '^[[A' up-line-or-search
+    bindkey '^[[B' down-line-or-search
+fi
 
 # Home/End keys
 bindkey '^[[H' beginning-of-line
@@ -210,12 +240,6 @@ bindkey '^[[1;5D' backward-word
 
 # Delete key
 bindkey '^[[3~' delete-char
-
-# --- Plugin Loading (Sheldon) ---
-# Sheldon is a fast, modern plugin manager
-if command -v sheldon >/dev/null 2>&1; then
-    eval "$(sheldon source)"
-fi
 
 # --- Prompt (Starship) ---
 # Starship is a cross-shell prompt

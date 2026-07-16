@@ -58,7 +58,8 @@ def _parse_numeric_selection(
     in-range number both count as valid so callers don't print a spurious
     "invalid choice" warning on a legitimate default pick.
     """
-    cleaned = re.sub(r"\x1b\[[0-9;]*[A-Za-z]", "", selection).strip()
+    # Strip CSI sequences; '~' terminates bracketed-paste markers (\x1b[200~)
+    cleaned = re.sub(r"\x1b\[[0-9;]*[A-Za-z~]", "", selection).strip()
     if not cleaned:
         return default_idx, True
     if not cleaned.isdigit():
@@ -71,12 +72,15 @@ def _parse_numeric_selection(
 
 def _ensure_first_run_color(ctx: "typer.Context") -> None:
     """Prompt for MOTD color on first run when interactive."""
-    # Skip if already configured or not a TTY
-    if CONFIG_FILE.exists() or not sys.stderr.isatty():
+    # Skip if already configured or not fully interactive (stdin is needed to
+    # answer the prompt; stderr to display it)
+    if CONFIG_FILE.exists() or not sys.stderr.isatty() or not sys.stdin.isatty():
         return
 
-    # Avoid prompting when user explicitly runs config
-    if ctx.invoked_subcommand == "config":
+    # Skip commands where an interactive detour is wrong: config prompts on
+    # its own, motd runs at every shell startup, doctor may be feeding a
+    # script via --json.
+    if ctx.invoked_subcommand in ("config", "motd", "doctor"):
         return
 
     ui.print_header("Franklin Configuration (first run)")
@@ -118,6 +122,45 @@ def _ensure_first_run_color(ctx: "typer.Context") -> None:
     ui.print_success(f"MOTD color set to {color_choice} ({hex_color})")
 
 
+def _save_config_keys(updates: Dict[str, str]) -> None:
+    """Update key=value pairs in config.env in place.
+
+    Existing lines are preserved verbatim; the given keys are replaced where
+    they appear (including uncommenting a `# KEY=...` placeholder) and
+    appended at the end if absent. This keeps hand-edited or future keys
+    intact instead of rewriting the whole file.
+    """
+    CONFIG_DIR.mkdir(parents=True, exist_ok=True)
+
+    lines: List[str] = []
+    if CONFIG_FILE.exists():
+        try:
+            lines = CONFIG_FILE.read_text().splitlines()
+        except OSError:
+            lines = []
+    else:
+        lines = ["# Franklin Configuration"]
+
+    remaining = dict(updates)
+    out: List[str] = []
+    for line in lines:
+        stripped = line.strip()
+        matched_key = None
+        for key in remaining:
+            if stripped.startswith(f"{key}=") or stripped.startswith(f"# {key}="):
+                matched_key = key
+                break
+        if matched_key:
+            out.append(f'{matched_key}="{remaining.pop(matched_key)}"')
+        else:
+            out.append(line)
+
+    for key, value in remaining.items():
+        out.append(f'{key}="{value}"')
+
+    CONFIG_FILE.write_text("\n".join(out) + "\n")
+
+
 def _detect_os_family() -> str:
     """Detect OS family for package manager selection.
 
@@ -143,7 +186,10 @@ def _detect_os_family() -> str:
 
 
 def _run_logged(
-    cmd: List[str], dry_run: bool = False, timeout: int = 600
+    cmd: List[str],
+    dry_run: bool = False,
+    timeout: int = 600,
+    ok_codes: Tuple[int, ...] = (0,),
 ) -> Tuple[bool, List[str]]:
     """
     Run a command, streaming stdout to UI branch lines.
@@ -154,6 +200,8 @@ def _run_logged(
         cmd: Command to run as list of strings
         dry_run: If True, print command without executing
         timeout: Maximum seconds to wait for command completion (default: 600)
+        ok_codes: Exit codes treated as success (e.g. dnf --assumeno exits 1
+            when it declines a pending transaction, which is not a failure)
     """
     if dry_run:
         ui.print_branch(f"DRY RUN: {' '.join(cmd)}")
@@ -163,23 +211,42 @@ def _run_logged(
             cmd,
             capture_output=True,
             text=True,
-            check=True,
             timeout=timeout,
         )
-        lines = [line for line in result.stdout.strip().split("\n") if line]
-        for line in lines:
-            ui.console.print(f"      {line}")
-        return True, lines
     except FileNotFoundError:
         ui.print_error(f"{cmd[0]} not found on this system")
         return False, []
     except subprocess.TimeoutExpired:
         ui.print_error(f"{cmd[0]} timed out after {timeout} seconds")
         return False, []
-    except subprocess.CalledProcessError as e:
-        stderr = e.stderr.strip() if e.stderr else str(e)
-        ui.print_error(stderr)
-        return False, []
+
+    lines = [line for line in result.stdout.strip().split("\n") if line]
+    if result.returncode in ok_codes:
+        for line in lines:
+            ui.console.print(f"      {line}")
+        return True, lines
+
+    stderr = result.stderr.strip() if result.stderr else f"exit code {result.returncode}"
+    ui.print_error(stderr)
+    return False, lines
+
+
+def _resync_cli(dry_run: bool = False) -> bool:
+    """Reinstall the CLI into the Franklin venv after a core update.
+
+    The editable install picks up code changes automatically, but new
+    dependencies declared in pyproject.toml only land via pip. No-op for
+    dev layouts without the managed venv.
+    """
+    pip = FRANKLIN_ROOT / "venv" / "bin" / "pip"
+    pkg = FRANKLIN_ROOT / "franklin"
+    if not pip.exists() or not (pkg / "pyproject.toml").exists():
+        return True
+    ui.print_branch("Syncing CLI dependencies...")
+    ok, _ = _run_logged(
+        [str(pip), "install", "--quiet", "-e", str(pkg)], dry_run=dry_run
+    )
+    return ok
 
 
 def _has_bat() -> bool:
@@ -211,9 +278,13 @@ def _update_system_packages(os_family: str, dry_run: bool) -> bool:
         ui.print_branch("Using dnf")
         ok_update, _ = _run_logged(["sudo", "dnf", "makecache"], dry_run=dry_run)
         upgrade_cmd = ["sudo", "dnf", "upgrade", "-y"]
+        upgrade_ok_codes: Tuple[int, ...] = (0,)
         if dry_run:
+            # --assumeno answers "no" to the transaction prompt and exits 1
+            # when updates were available; both 0 and 1 mean the dry run worked.
             upgrade_cmd = ["dnf", "upgrade", "--assumeno"]
-        ok_upgrade, _ = _run_logged(upgrade_cmd, dry_run=dry_run)
+            upgrade_ok_codes = (0, 1)
+        ok_upgrade, _ = _run_logged(upgrade_cmd, dry_run=dry_run, ok_codes=upgrade_ok_codes)
         return ok_update and ok_upgrade
 
     ui.print_error("Unsupported OS family for system package updates")
@@ -342,6 +413,23 @@ def doctor(
         checks["bat"] = "not found"
         failures.append("bat")
 
+    # Check git (required by `franklin update`)
+    if shutil.which("git"):
+        checks["git"] = "present"
+    else:
+        checks["git"] = "not found"
+        failures.append("git")
+
+    # Check mise (runtime manager set up by install.sh)
+    if shutil.which("mise"):
+        checks["mise"] = "present"
+    else:
+        checks["mise"] = "not found"
+        failures.append("mise")
+
+    # Check eza (optional: ls aliases fall back to plain ls without it)
+    checks["eza"] = "present" if shutil.which("eza") else "not found (optional)"
+
     # Check Franklin root
     if FRANKLIN_ROOT.exists():
         checks["Franklin Root"] = str(FRANKLIN_ROOT)
@@ -349,11 +437,22 @@ def doctor(
         checks["Franklin Root"] = "Not found"
         failures.append("franklin_root")
 
+    # Check that ~/.zshrc is the Franklin-managed symlink
+    zshrc = Path.home() / ".zshrc"
+    template = FRANKLIN_ROOT / "franklin" / "templates" / "zshrc.zsh"
+    if zshrc.is_symlink() and zshrc.resolve() == template.resolve():
+        checks["~/.zshrc"] = "Franklin-managed symlink"
+    else:
+        checks["~/.zshrc"] = "not linked to Franklin template"
+        failures.append("zshrc")
+
     # Output
     if json_output:
         import json
 
-        print(json.dumps(checks, indent=2))
+        payload: Dict[str, str] = dict(checks)
+        payload["status"] = "fail" if failures else "ok"
+        print(json.dumps(payload, indent=2))
     else:
         ui.print_columnar(checks)
 
@@ -389,6 +488,7 @@ def update(
 
     if dry_run:
         ui.print_branch("DRY RUN: git -C <franklin_root> pull --ff-only")
+        ui.print_branch("DRY RUN: venv pip install -e <franklin_root>/franklin")
         ui.print_success("Dry run complete (no changes made).")
         ui.section_end()
         return
@@ -410,6 +510,9 @@ def update(
     ui.print_branch("Pulling latest changes...")
     ok, _ = _run_logged(["git", "-C", str(FRANKLIN_ROOT), "pull", "--ff-only"])
     if not ok:
+        raise typer.Exit(code=1)
+
+    if not _resync_cli():
         raise typer.Exit(code=1)
 
     ui.section_end()
@@ -455,7 +558,7 @@ def update_all(
             ["git", "-C", str(FRANKLIN_ROOT), "pull", "--ff-only"],
             dry_run=dry_run,
         )
-        if ok:
+        if ok and _resync_cli(dry_run=dry_run):
             ui.print_success("Franklin core updated")
         else:
             failed = True
@@ -519,48 +622,39 @@ def config(
         Optional[str],
         typer.Option("--color", help="Set MOTD color (hex code or color name)"),
     ] = None,
+    services: Annotated[
+        Optional[str],
+        typer.Option(
+            "--services",
+            help='Comma-separated services to show in the MOTD (e.g. "nginx,redis"); pass "" to clear',
+        ),
+    ] = None,
 ):
     """
     Configure Franklin settings interactively or via flags.
 
     Without flags: Opens an interactive TUI.
     With --color: Sets the MOTD banner color.
+    With --services: Sets the MOTD monitored services list.
     """
 
     def save_color(color_name: str, hex_color: str) -> None:
-        CONFIG_DIR.mkdir(parents=True, exist_ok=True)
-
-        # Read existing config to preserve other settings
-        existing_config = {}
-        if CONFIG_FILE.exists():
-            try:
-                with open(CONFIG_FILE) as f:
-                    for line in f:
-                        if line.startswith("MONITORED_SERVICES="):
-                            existing_config["MONITORED_SERVICES"] = line.rstrip("\n")
-            except Exception:
-                pass
-
-        # Write config with updated color and preserved services
-        with open(CONFIG_FILE, "w") as f:
-            f.write("# Franklin Configuration\n")
-            f.write(
-                f"# Generated: {__import__('datetime').datetime.now().isoformat()}\n"
-            )
-            f.write("\n")
-            f.write("# MOTD Color (Campfire palette)\n")
-            f.write(f'MOTD_COLOR_NAME="{color_name}"\n')
-            f.write(f'MOTD_COLOR="{hex_color}"\n')
-            f.write("\n")
-            f.write("# Monitored Services (comma-separated list)\n")
-            f.write('# Example: MONITORED_SERVICES="nginx,postgresql,redis"\n')
-            if "MONITORED_SERVICES" in existing_config:
-                f.write(existing_config["MONITORED_SERVICES"] + "\n")
-            else:
-                f.write('# MONITORED_SERVICES=""\n')
+        _save_config_keys(
+            {"MOTD_COLOR_NAME": color_name, "MOTD_COLOR": hex_color}
+        )
         ui.print_success(f"MOTD color set to {color_name} ({hex_color})")
 
     # Flag-driven (non-interactive) path
+    if services is not None:
+        cleaned = ",".join(s.strip() for s in services.split(",") if s.strip())
+        _save_config_keys({"MONITORED_SERVICES": cleaned})
+        if cleaned:
+            ui.print_success(f"Monitored services set to: {cleaned}")
+        else:
+            ui.print_success("Monitored services cleared")
+        if not color:
+            return
+
     if color:
         # Accept canonical title-case ("Mauve Earth"), lowercase ("mauve earth"),
         # and kebab-case ("mauve-earth") for any CAMPFIRE_COLORS key.
@@ -633,6 +727,87 @@ def config(
 
     ui.print_error(f"Invalid selection: {selection}")
     raise typer.Exit(code=1)
+
+
+@app.command()
+def uninstall(
+    yes: Annotated[
+        bool,
+        typer.Option("--yes", "-y", help="Skip confirmation prompt"),
+    ] = False,
+):
+    """
+    Restore your pre-Franklin shell configuration.
+
+    Removes the Franklin-managed symlinks (~/.zshrc, sheldon, starship, mise
+    configs) and restores the most recent pre-install backup of your Zsh
+    dotfiles. The install directory, venv, and backups are left on disk;
+    their paths are printed so you can remove them manually.
+    """
+    ui.print_header("Uninstalling Franklin")
+
+    if not yes and sys.stderr.isatty():
+        confirm = Prompt.ask(
+            "This will unlink Franklin's shell configuration and restore your backed-up dotfiles. Continue?",
+            choices=["y", "n"],
+            default="n",
+        )
+        if confirm != "y":
+            ui.print_info("Uninstall cancelled")
+            raise typer.Exit()
+
+    franklin_root = FRANKLIN_ROOT.resolve()
+
+    def _points_into_franklin(link: Path) -> bool:
+        try:
+            return str(link.resolve()).startswith(str(franklin_root) + os.sep)
+        except OSError:
+            return False
+
+    # 1. Remove Franklin-managed symlinks (only if they point into the install)
+    managed_links = [
+        Path.home() / ".zshrc",
+        Path.home() / ".config" / "sheldon" / "plugins.toml",
+        Path.home() / ".config" / "starship.toml",
+        Path.home() / ".config" / "mise" / "config.toml",
+        Path.home() / ".local" / "bin" / "franklin",
+    ]
+    for link in managed_links:
+        if link.is_symlink() and _points_into_franklin(link):
+            link.unlink()
+            ui.print_branch(f"Removed symlink {link}")
+
+    # 2. Restore the most recent backup of the Zsh dotfiles
+    backups_root = FRANKLIN_ROOT / "backups"
+    snapshots = (
+        sorted(p for p in backups_root.iterdir() if p.is_dir())
+        if backups_root.is_dir()
+        else []
+    )
+    if snapshots:
+        latest = snapshots[-1]
+        restored = False
+        for name in (".zshrc", ".zprofile", ".zshenv"):
+            src = latest / name
+            dest = Path.home() / name
+            if src.is_file() and not dest.exists():
+                shutil.copy2(src, dest)
+                ui.print_branch(f"Restored {name} from {latest.name}")
+                restored = True
+        if not restored:
+            ui.print_branch(f"Nothing to restore from backup {latest.name}")
+    else:
+        ui.print_branch("No backups found; nothing to restore")
+
+    ui.section_end()
+    ui.print_final_success("Franklin unlinked.")
+    ui.print_info("Left on disk (remove manually if desired):")
+    ui.print_branch(f"Install root: {FRANKLIN_ROOT}")
+    ui.print_branch(f"Config:       {CONFIG_DIR}")
+    ui.print_branch(f"Overrides:    {Path.home() / '.franklin.local.zsh'}")
+    ui.print_info(
+        "If zsh was set as your login shell and you want it back: chsh -s /bin/bash (or your preferred shell)"
+    )
 
 
 @app.command()

@@ -24,11 +24,16 @@
 set -euo pipefail
 
 # --- Configuration ---
+# FRANKLIN_ROOT is the Python package dir (<install root>/franklin);
+# FRANKLIN_INSTALL_ROOT is the repo clone itself. Backups and the venv live
+# under the install root so custom locations (bootstrap --dir) stay
+# self-contained and `franklin uninstall` can find them via $FRANKLIN_ROOT.
 FRANKLIN_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]:-$0}")/.." && pwd)"
-BACKUP_DIR="${HOME}/.local/share/franklin/backups/$(date +%Y-%m-%d_%H%M%S)"
+FRANKLIN_INSTALL_ROOT="$(cd "${FRANKLIN_ROOT}/.." && pwd)"
+BACKUP_DIR="${FRANKLIN_INSTALL_ROOT}/backups/$(date +%Y-%m-%d_%H%M%S)"
 CONFIG_DIR="${HOME}/.config/franklin"
 CONFIG_FILE="${CONFIG_DIR}/config.env"
-VENV_DIR="${HOME}/.local/share/franklin/venv"
+VENV_DIR="${FRANKLIN_INSTALL_ROOT}/venv"
 
 # --- Parse Arguments ---
 NON_INTERACTIVE=false
@@ -121,7 +126,12 @@ mkdir -p "$BACKUP_DIR"
 
 for file in .zshrc .zprofile .zshenv; do
     filepath="${HOME}/${file}"
-    if [ -f "$filepath" ] && [ ! -L "$filepath" ]; then
+    if [ -L "$filepath" ]; then
+        # Symlinks (e.g. into a dotfiles repo) can't be meaningfully moved,
+        # but record the target so the wiring can be restored by hand.
+        ui_branch "Found $file symlink, recording its target in $BACKUP_DIR"
+        readlink "$filepath" > "$BACKUP_DIR/${file}.symlink-target"
+    elif [ -f "$filepath" ]; then
         ui_branch "Found $file, backing up to $BACKUP_DIR"
         mv "$filepath" "$BACKUP_DIR/"
     fi
@@ -181,43 +191,52 @@ if [ -n "$PRESET_COLOR" ]; then
     fi
 # Interactive mode if TTY and not --non-interactive
 elif [ -t 0 ] && [ "$NON_INTERACTIVE" = false ]; then
+    # Build the picker from the canonical table (all 14 signature colors).
+    # "Black Rock" is skipped: it's the legacy alias for Stone and would show
+    # as a duplicate swatch. Falls back to the core 7 if the emitter failed.
+    MENU_NAMES=()
+    MENU_HEXES=()
+    if [ -n "$_COLOR_TABLE" ]; then
+        while IFS='|' read -r _name _base _dark _light; do
+            [ -z "$_name" ] && continue
+            [ "$_name" = "Black Rock" ] && continue
+            MENU_NAMES+=("$_name")
+            MENU_HEXES+=("$_base")
+        done <<< "$_COLOR_TABLE"
+    else
+        MENU_NAMES=("Cello" "Terracotta" "Stone" "Sage" "Golden Amber" "Flamingo" "Blue Calx")
+        MENU_HEXES=("#607a97" "#b87b6a" "#747b8a" "#8fb14b" "#f9c574" "#e75351" "#b8c5d9")
+    fi
+
     echo "" >&2
     echo "Select your Campfire color for the MOTD banner:" >&2
     echo "" >&2
-    show_color "1) Cello" "#607a97"
-    show_color "2) Terracotta" "#b87b6a"
-    show_color "3) Black Rock" "#747b8a"
-    show_color "4) Sage" "#8fb14b"
-    show_color "5) Golden Amber" "#f9c574"
-    show_color "6) Flamingo" "#e75351"
-    show_color "7) Blue Calx" "#b8c5d9"
-    echo "  8) Custom (enter hex code)" >&2
+    for i in "${!MENU_NAMES[@]}"; do
+        show_color "$((i + 1))) ${MENU_NAMES[$i]}" "${MENU_HEXES[$i]}"
+    done
+    CUSTOM_IDX=$(( ${#MENU_NAMES[@]} + 1 ))
+    echo "  ${CUSTOM_IDX}) Custom (enter hex code)" >&2
     echo "" >&2
 
-    read -r -p "Enter choice [1-8, default: 1]: " color_choice
+    read -r -p "Enter choice [1-${CUSTOM_IDX}, default: 1]: " color_choice
+    color_choice="${color_choice:-1}"
 
-    case "${color_choice:-1}" in
-        1) MOTD_COLOR="#607a97"; MOTD_COLOR_NAME="Cello" ;;
-        2) MOTD_COLOR="#b87b6a"; MOTD_COLOR_NAME="Terracotta" ;;
-        3) MOTD_COLOR="#747b8a"; MOTD_COLOR_NAME="Black Rock" ;;
-        4) MOTD_COLOR="#8fb14b"; MOTD_COLOR_NAME="Sage" ;;
-        5) MOTD_COLOR="#f9c574"; MOTD_COLOR_NAME="Golden Amber" ;;
-        6) MOTD_COLOR="#e75351"; MOTD_COLOR_NAME="Flamingo" ;;
-        7) MOTD_COLOR="#b8c5d9"; MOTD_COLOR_NAME="Blue Calx" ;;
-        8)
-            read -r -p "Enter hex code (#rrggbb): " custom_color
-            # Basic validation
-            if [[ "$custom_color" =~ ^#[0-9A-Fa-f]{6}$ ]]; then
-                MOTD_COLOR="$custom_color"
-                MOTD_COLOR_NAME="custom"
-            else
-                ui_warning "Invalid hex code, using default (Cello)"
-            fi
-            ;;
-        *)
-            ui_warning "Invalid choice, using default (Cello)"
-            ;;
-    esac
+    if [ "$color_choice" = "$CUSTOM_IDX" ]; then
+        read -r -p "Enter hex code (#rrggbb): " custom_color
+        # Basic validation
+        if [[ "$custom_color" =~ ^#[0-9A-Fa-f]{6}$ ]]; then
+            MOTD_COLOR="$custom_color"
+            MOTD_COLOR_NAME="custom"
+        else
+            ui_warning "Invalid hex code, using default (Cello)"
+        fi
+    elif [[ "$color_choice" =~ ^[0-9]+$ ]] \
+        && [ "$color_choice" -ge 1 ] && [ "$color_choice" -le "${#MENU_NAMES[@]}" ]; then
+        MOTD_COLOR="${MENU_HEXES[$((color_choice - 1))]}"
+        MOTD_COLOR_NAME="${MENU_NAMES[$((color_choice - 1))]}"
+    else
+        ui_warning "Invalid choice, using default (Cello)"
+    fi
 else
     ui_branch "Non-interactive mode, using default color (Cello)"
     COLOR_WAS_DEFAULTED=true
@@ -313,11 +332,14 @@ case "$OS_FAMILY" in
             MISSING+=(bat)
         fi
 
+        APT_UPDATED=false
         if [ ${#MISSING[@]} -eq 0 ]; then
             ui_branch "All apt packages already installed, skipping apt-get update"
         else
             ui_branch "Installing via apt: ${MISSING[*]}"
-            if ! sudo apt-get update -qq 2>&1 | sed 's/^/      /' >&2; then
+            if sudo apt-get update -qq 2>&1 | sed 's/^/      /' >&2; then
+                APT_UPDATED=true
+            else
                 ui_error_noexit "apt-get update failed"
                 INSTALL_FAILED=true
             fi
@@ -348,6 +370,11 @@ case "$OS_FAMILY" in
         # Install eza (best-effort; only in apt on Ubuntu 24.04+ / Debian 13+)
         if ! command -v eza >/dev/null 2>&1; then
             ui_branch "Installing eza..."
+            # Refresh the package index if the main install skipped it —
+            # otherwise a stale cache fails this for the wrong reason.
+            if [ "$APT_UPDATED" = false ]; then
+                sudo apt-get update -qq 2>&1 | sed 's/^/      /' >&2 || true
+            fi
             if sudo apt-get install -y -qq eza 2>&1 | sed 's/^/      /' >&2; then
                 :
             else
@@ -528,6 +555,17 @@ ui_header "Installing Franklin CLI"
 "$VENV_DIR/bin/pip" install --quiet -e "$FRANKLIN_ROOT" 2>&1 | sed 's/^/  /' >&2 || \
     ui_warning "Failed to install Franklin CLI (non-fatal)"
 
+# Expose only the `franklin` entrypoint on PATH. The venv's bin/ is
+# deliberately NOT added to PATH by the zshrc (its python3/pip would shadow
+# mise-managed and system Python), so link the one binary users need.
+mkdir -p "${HOME}/.local/bin"
+if [ -x "$VENV_DIR/bin/franklin" ]; then
+    ln -sf "$VENV_DIR/bin/franklin" "${HOME}/.local/bin/franklin"
+    ui_branch "Linked franklin CLI into ~/.local/bin"
+else
+    ui_warning "franklin entrypoint not found in venv; CLI will not be on PATH"
+fi
+
 ui_success "Franklin CLI installed"
 ui_section_end
 
@@ -571,17 +609,6 @@ if [ ! -f "$LOCAL_CONFIG_PATH" ]; then
 # Edit ~/.config/franklin/config.env and add (comma-separated):
 #   MONITORED_SERVICES="nginx,postgresql,meshtasticd"
 # Services will only appear if they are running (systemctl is-active)
-
-# Updates
-# -------
-# Control the default mode and timeout for update-all.sh:
-# export FRANKLIN_UPDATE_MODE="auto"   # quiet | auto | verbose
-# export FRANKLIN_UPDATE_TIMEOUT=600   # seconds
-
-# Backups
-# -------
-# Override where Franklin stores configuration backups:
-# export FRANKLIN_BACKUP_DIR="$HOME/.local/share/franklin/backups"
 
 # Custom aliases and functions
 # ----------------------------
