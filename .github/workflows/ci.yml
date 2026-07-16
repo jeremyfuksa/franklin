@@ -27,15 +27,22 @@ jobs:
           source .venv/bin/activate
           pip install -r franklin/requirements.txt
 
-      - name: Stub core tools (Zsh, Sheldon, Starship, bat)
+      - name: Stub core tools (Zsh, Sheldon, Starship, bat, mise)
         run: |
           mkdir -p /tmp/fake-bin
           printf '#!/usr/bin/env bash\n echo \"Sheldon 0.0.0 (stub)\"' > /tmp/fake-bin/sheldon
           printf '#!/usr/bin/env bash\n echo \"starship 0.0.0 (stub)\"' > /tmp/fake-bin/starship
           printf '#!/usr/bin/env bash\n echo \"bat 0.0.0 (stub)\"' > /tmp/fake-bin/bat
           printf '#!/usr/bin/env bash\n echo \"zsh 0.0.0 (stub)\"' > /tmp/fake-bin/zsh
+          printf '#!/usr/bin/env bash\n echo \"mise 0.0.0 (stub)\"' > /tmp/fake-bin/mise
           chmod +x /tmp/fake-bin/*
           echo "/tmp/fake-bin" >> "$GITHUB_PATH"
+
+      # doctor verifies ~/.zshrc is the Franklin-managed symlink pointing at
+      # <root>/franklin/templates/zshrc.zsh (added in v2.2.0), so link it the
+      # way install.sh would.
+      - name: Link ~/.zshrc to the Franklin template
+        run: ln -sf "$PWD/franklin/templates/zshrc.zsh" ~/.zshrc
 
       - name: CLI smokes
         run: |
