@@ -17,16 +17,19 @@ We are committed to providing a welcoming and inspiring community for all. Pleas
 
 Before contributing, familiarize yourself with:
 - [README.md](README.md) – Install flow, daily usage, and troubleshooting
+- [CLAUDE.md](CLAUDE.md) – Project structure, code style, CLI reference, and the definition of done
+
+Franklin ships as a **Python package** (Typer CLI + Rich UI) with shell bootstrap/install wrappers — most contributions touch `franklin/src/lib/` (Python), `franklin/src/*.sh` (installers), or `franklin/templates/zshrc.zsh`.
 
 ### Core Principles
 
-Franklin has evolved from its “spec-first” roots, but these guardrails still matter:
+These guardrails still matter:
 
-1. **OS-aware bundles** – macOS, Debian/Ubuntu, and RHEL/Fedora each get their own trimmed artifacts
-2. **Idempotent installs** – Re-running `install.sh` or `update-all.sh` is always safe
-3. **Observable operations** – Every long-running step emits logs/spinners, and `--verbose` reveals full output
-4. **Minimal dependencies** – Stay POSIX-friendly, prefer shell/packager primitives, and avoid heavyweight tooling
-5. **Fast recovery** – Installs should remain rerunnable thanks to backups and idempotent steps
+1. **Cross-platform** – macOS, Debian/Ubuntu, and RHEL/Fedora are detected at runtime from a single codebase
+2. **Idempotent installs** – Re-running `install.sh` or `franklin update-all` is always safe
+3. **Observable operations** – Every step emits Campfire UI feedback; UI goes to stderr so stdout stays clean for machine-readable output (`--json`)
+4. **Minimal dependencies** – Stay POSIX-friendly in shell code, and keep the Python dependency list short (Typer, Rich)
+5. **Fast recovery** – Installs remain rerunnable thanks to backups at `<install root>/backups/` and idempotent steps
 
 ## 🎯 Types of Contributions
 
@@ -41,7 +44,7 @@ Found a bug? Help us fix it!
    - Steps to reproduce
    - Expected behavior
    - Actual behavior
-   - Error output (use `--verbose` flag)
+   - Error output, plus `franklin doctor --json` output if relevant
    - What you've already tried
 
 ### Feature Requests
@@ -54,7 +57,6 @@ Have an idea for a feature? We'd love to hear it!
    - How it aligns with core principles
    - Suggested implementation approach
    - Platform considerations
-
 3. **Discuss before implementing** to avoid duplicate work
 
 ### Documentation Improvements
@@ -64,12 +66,11 @@ Help improve our docs!
 - Fix typos and clarity issues
 - Add examples and use cases
 - Improve organization and structure
-- Translate to other languages
 - Add diagrams and visuals
 
 ### Code Contributions
 
-Want to implement a feature or fix a bug?
+Want to implement a feature or fix a bug? Read on.
 
 ## 👨‍💻 Development Workflow
 
@@ -100,111 +101,80 @@ git checkout -b fix/issue-description
 ### 3. Set Up Development Environment
 
 ```bash
-# Install Franklin in development mode
-bash install.sh --verbose --motd-color mauve
+# Create a venv and install Franklin in editable mode
+cd franklin
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -e . pytest
+cd ..
 
-# Run tests to verify setup
-bash test/_os_detect_tests.sh
-bash test/test_install.sh
-bash test/bootstrap-tests.sh
-bash test/motd-tests.sh
+# Run the CLI during development
+PYTHONPATH=franklin/src python -m lib.main doctor
+# Or via the installed entrypoint:
+franklin doctor
+
+# Run the test suite to verify setup
+pytest test/test_cli.py -v
+```
+
+To exercise the installers themselves (they modify your dotfiles — prefer a VM or container):
+
+```bash
+# Non-interactive install
+# Flags: --non-interactive / --color NAME / --with-claude|--no-claude / --no-chsh
+bash franklin/src/install.sh --non-interactive --color cello --no-claude
+
+# Bootstrap into a throwaway location
+bash franklin/src/bootstrap.sh --dir /tmp/franklin-test --ref main
 ```
 
 ### 4. Make Your Changes
 
-#### For Shell Scripts
+Follow the code style in [CLAUDE.md](CLAUDE.md). In brief:
 
-```bash
-# Follow these patterns:
+**Python** (`franklin/src/lib/`):
+- Use Typer for commands; keep docstrings short
+- Route all UI through `CampfireUI` (from `lib.ui`) so stdout stays clean for `--json`
+- Reuse glyph/color constants from `lib.constants`
 
-# 1. Use POSIX shell where possible (sh, not bash-only)
-# 2. Use set -e for safety
-# 3. Check for command availability before using
-# 4. Handle platform differences
-# 5. Add comments for non-obvious code
-# 6. Use consistent error handling
+**Shell** (`franklin/src/*.sh`):
+- Use `set -euo pipefail` at the top
+- Quote all variable expansions (`"$var"`)
+- Source shared UI from `lib/ui.sh` (install.sh) or use minimal inline (bootstrap.sh)
+- Keep FRANKLIN_ROOT/CONFIG paths consistent with `constants.py`
 
-# Good example:
-set -e
-
-check_command() {
-  if ! command -v "$1" >/dev/null 2>&1; then
-    return 1
-  fi
-}
-
-if check_command "zsh"; then
-  log_success "zsh is installed"
-else
-  log_error "zsh not found"
-  exit 2
-fi
-```
-
-#### For Zsh Configuration
-
-```bash
-# Follow these patterns:
-
-# 1. Use Zsh 5+ syntax only
-# 2. Avoid bash-isms
-# 3. Use functions for reusable code
-# 4. Document configuration options
-# 5. Test with both Zsh and Bash (where applicable)
-```
+**Zsh template** (`franklin/templates/zshrc.zsh`):
+- Respect the load-order contract: sheldon loads before `compinit`, and the `compdef` queue-and-replay stub must stay between them (see CLAUDE.md)
+- Verify template changes in a live zsh — start a fresh shell and watch for startup errors
 
 ### 5. Testing
 
-**All contributions must include tests.**
-
-#### Run Existing Tests
+The test suite is `test/test_cli.py` — pytest smoke tests that run each CLI command as a subprocess and assert on exit codes and output.
 
 ```bash
-# Unit tests for platform detection
-bash test/_os_detect_tests.sh
-
-# Installation script tests
-bash test/test_install.sh
-
-# Acceptance/smoke tests
-bash test/smoke.zsh
+# Run the suite (with your venv activated so `python3` resolves Typer/Rich)
+pytest test/test_cli.py -v
 ```
 
-#### Write New Tests
-
-Add tests for new features:
+Manual/diagnostic helpers also live in `test/`:
 
 ```bash
-# test/test_your_feature.sh
-#!/bin/bash
-set -e
-
-# Test setup
-setup() {
-  # ...initialization...
-}
-
-# Test cases
-test_something() {
-  local result=$(your_function)
-  [ "$result" = "expected" ] && echo "PASS" || echo "FAIL"
-}
-
-# Run tests
-setup
-test_something
-test_another_thing
+bash test/ui-demo.sh            # Visual demo of the Campfire UI helpers
+bash test/sheldon-diagnostic.sh # Plugin manager diagnostic
 ```
+
+Add pytest cases to `test/test_cli.py` for new CLI behavior — new commands, flags, and error cases (exit codes included).
+
+#### Continuous Integration
+
+`.github/workflows/ci.yml` runs CLI smokes on macOS and Ubuntu for every PR (with sheldon/starship/bat/zsh/mise stubbed). **CI does not run the pytest suite** — run `pytest test/test_cli.py` locally before pushing; it's part of the definition of done.
 
 #### Test on Multiple Platforms
 
 If possible, test on:
-- macOS 10.15+ (Intel and Apple Silicon)
-- Ubuntu 20.04+
-- Debian 11+
+- macOS (Intel and Apple Silicon)
+- Ubuntu 20.04+ / Debian 11+
 - Fedora 36+
-
-Or use GitHub Actions (runs automatically on PR).
 
 ### 6. Write Commit Messages
 
@@ -218,13 +188,13 @@ type(scope): description
 - Reference issue: fixes #123
 
 Types: feat, fix, docs, test, refactor, perf, ci, chore
-Scope: os_detect, install, update, shell, etc.
+Scopes: cli, install, update, ui, motd, config
 
 Examples:
-feat(os_detect): add Rocky Linux support
+feat(cli): add Rocky Linux support to doctor
 fix(install): handle missing sudo on minimal systems
-docs(usage): clarify plugin management
-test(platform): add more platform detection cases
+docs(readme): clarify plugin management
+test(cli): cover doctor --json failure paths
 ```
 
 ### 7. Push and Create Pull Request
@@ -236,8 +206,8 @@ git push origin feature/your-feature-name
 # Create PR on GitHub
 # - Title: Clear description of changes
 # - Description: Explain what, why, and how
-# - Tests: Confirm tests pass
-# - Screenshots: If UI changes (docs/configuration)
+# - Tests: Confirm pytest passes locally and CI smokes are green
+# - Screenshots: If UI changes (MOTD, doctor output, etc.)
 ```
 
 ## 📝 Pull Request Guidelines
@@ -259,16 +229,15 @@ Brief description of changes
 Fixes #123 (if applicable)
 
 ## How Has This Been Tested?
-- [ ] Unit tests pass
-- [ ] Integration tests pass
-- [ ] Smoke tests pass
+- [ ] `pytest test/test_cli.py` passes locally
+- [ ] CI smokes pass (macOS + Ubuntu)
 - [ ] Tested on [platform]
 
 ## Checklist
-- [ ] Code follows style guidelines
+- [ ] Code follows style guidelines (CLAUDE.md)
 - [ ] Self-review completed
 - [ ] Comments added for complex logic
-- [ ] Documentation updated
+- [ ] Documentation updated (README.md / CLAUDE.md / CHANGELOG.md)
 - [ ] No breaking changes introduced
 - [ ] Tests added for new code
 ```
@@ -276,8 +245,7 @@ Fixes #123 (if applicable)
 ### Review Process
 
 1. **Automated checks**:
-   - Tests must pass on all platforms
-   - No syntax errors
+   - CI smokes must pass on macOS and Ubuntu
 
 2. **Manual review**:
    - Code quality and style
@@ -288,135 +256,11 @@ Fixes #123 (if applicable)
 3. **Approval**:
    - Maintainer approval required
    - All feedback addressed
-   - CI/CD passes
-
-## 🏗️ Architecture Guidelines
-
-When contributing code, follow these architecture patterns:
-
-### 1. Modular Design
-
-```bash
-# Create separate modules for different concerns
-lib/
-├── feature_core.sh       # Main functionality
-├── feature_utils.sh      # Helper functions
-└── feature_test.sh       # Tests
-
-# Each module has single responsibility
-# Modules export functions, not side effects
-```
-
-### 2. Error Handling
-
-```bash
-# Always use proper error handling
-(
-  set +e
-  operation_that_might_fail
-  return $?
-) || {
-  local exit_code=$?
-  if [ $exit_code -eq 1 ]; then
-    echo "Optional step skipped"
-  else
-    echo "ERROR: Critical failure"
-    return 2
-  fi
-}
-```
-
-### 3. Platform Abstraction
-
-```bash
-# Abstract platform differences
-case "$OS_FAMILY" in
-  macos)
-    install_via_homebrew "$package"
-    ;;
-  debian)
-    install_via_apt "$package"
-    ;;
-  fedora)
-    install_via_dnf "$package"
-    ;;
-  *)
-    return 1  # Unsupported
-    ;;
-esac
-```
-
-### 4. Logging
-
-```bash
-# Use consistent logging functions
-log_info "Starting operation"
-log_success "Operation completed"
-log_warning "Optional step skipped"
-log_error "Operation failed"
-log_debug "Debug information" # Only with --verbose
-```
-
-## 🧪 Test Requirements
-
-### Minimum Test Coverage
-
-- All new functions must have tests
-- All platform-specific code must be tested on all platforms
-- Error cases must be tested
-- Exit codes must be validated
-
-### Test Structure
-
-```bash
-#!/bin/bash
-# test/test_feature.sh
-set -e
-
-test_case_1() {
-  # Arrange
-  local input="value"
-
-  # Act
-  local result=$(your_function "$input")
-
-  # Assert
-  [ "$result" = "expected" ] && echo "✓ test_case_1" || echo "✗ test_case_1"
-}
-
-test_case_2() {
-  # Error case testing
-  if your_function_that_should_fail 2>/dev/null; then
-    echo "✗ test_case_2"
-  else
-    echo "✓ test_case_2"
-  fi
-}
-
-# Run all tests
-test_case_1
-test_case_2
-```
+   - CI passes
 
 ## 📖 Documentation
 
-## 🚢 Cutting a Release
-
-Maintainers can publish a new version with the automated helper once all planned changes are merged.
-
-1. Update `CHANGELOG.md`, moving changes from **Unreleased** into a new version heading.
-2. Ensure the working tree is clean and that you've run any smoke tests you care about.
-3. Preview the release steps:
-   ```bash
-   src/scripts/release.sh --dry-run v1.1.0
-   ```
-4. Run the real release (this stamps `VERSION`, commits `release: v1.1.0`, tags, and pushes):
-   ```bash
-   src/scripts/release.sh v1.1.0
-   ```
-The script intentionally refuses to run if the working tree is dirty or if the tag already exists, keeping releases reproducible.
-
-All contributions must include documentation:
+All contributions should keep the docs honest:
 
 ### Code Comments
 
@@ -437,13 +281,13 @@ install_package
 ### Documentation Updates
 
 If you add a feature, update:
-- [README.md](README.md) - Add to feature list and usage examples
-- Code comments - Document complex logic inline
-- Spec files in `specs/` - Update relevant specifications
+- [README.md](README.md) – Add to feature list and usage examples
+- [CLAUDE.md](CLAUDE.md) – Update the CLI table, paths, or structure if they changed
+- Code comments – Document complex logic inline
 
 ### Changelog Entry
 
-Add entry to [CHANGELOG.md](CHANGELOG.md) (if exists):
+Add an entry to [CHANGELOG.md](CHANGELOG.md) under `[Unreleased]`:
 
 ```markdown
 ## [Unreleased]
@@ -458,17 +302,14 @@ Add entry to [CHANGELOG.md](CHANGELOG.md) (if exists):
 - Breaking change description
 ```
 
-## 🚀 Release Process
+## 🚢 Release Process
 
-Maintainers follow this release process:
+Releases are automated by `.github/workflows/release.yml` — there is no release script to run. Maintainers:
 
-1. Ensure `master`/`main` is green (`bash test/test_install.sh`, `bash test/bootstrap-tests.sh`, etc.)
-2. Update the changelog/version metadata if needed
-3. Preview the release: `bash src/scripts/release.sh --dry-run vX.Y.Z`
-4. Execute the release: `bash src/scripts/release.sh vX.Y.Z` (stamps `VERSION`, commits, tags, pushes)
-5. Announce changes (release notes, README updates, etc.)
+1. Open a release PR that bumps `VERSION` and `franklin/pyproject.toml`, and promotes `[Unreleased]` in `CHANGELOG.md` to `[X.Y.Z] - <date>`
+2. Merge the PR — the workflow detects the `VERSION` change on `main`, validates it, tags `vX.Y.Z`, and publishes the GitHub Release with the CHANGELOG section as the body
 
-Contributors don't need to worry about releases.
+The full playbook lives in [CLAUDE.md](CLAUDE.md) under "Release Workflow". Contributors don't need to worry about releases.
 
 ## 💡 Tips for Successful Contributions
 
@@ -476,7 +317,7 @@ Contributors don't need to worry about releases.
 
 - Fix a typo in docs
 - Add a missing test
-- Improve error message
+- Improve an error message
 - Before tackling large features
 
 ### 2. Discuss First
@@ -493,9 +334,9 @@ Contributors don't need to worry about releases.
 
 ### 4. Test Thoroughly
 
-- Test your changes locally
+- Run `pytest test/test_cli.py` locally — CI won't do it for you
 - Test on multiple platforms if possible
-- Run full test suite before submitting PR
+- Verify zshrc template changes in a live shell
 
 ### 5. Keep it Simple
 

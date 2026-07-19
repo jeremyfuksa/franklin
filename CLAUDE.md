@@ -9,6 +9,9 @@ Franklin is a Zsh shell configuration system that provides a consistent, themed 
 ## Project Structure
 
 ```
+.github/workflows/
+├── ci.yml                # CLI smokes on macOS + Ubuntu (see Definition of Done)
+└── release.yml           # Tags and publishes releases on VERSION change
 franklin/
 ├── bin/franklin          # POSIX sh shim that invokes the Python CLI
 ├── config/
@@ -23,16 +26,23 @@ franklin/
 │       ├── constants.py  # Paths, colors, glyphs
 │       ├── main.py       # Typer CLI entrypoint
 │       ├── motd.py       # MOTD banner rendering
-│       └── ui.py         # Campfire UI helpers (Rich)
+│       ├── ui.py         # Campfire UI helpers (Rich)
 │       └── ui.sh         # Campfire UI helpers (Bash)
 ├── templates/
 │   └── zshrc.zsh         # Zsh template installed to ~/.zshrc
 ├── pyproject.toml        # Python package definition
 └── requirements.txt      # Python dependencies
+images/                   # README screenshots
 test/
 ├── test_cli.py           # Pytest CLI smoke tests
 ├── ui-demo.sh            # UI visual demo
+├── ui-demo-output.txt    # Captured output of the UI demo
 └── sheldon-diagnostic.sh # Plugin manager diagnostic
+AGENTS.md                 # Symlink → CLAUDE.md
+CHANGELOG.md              # Keep-a-Changelog release history
+CONTRIBUTING.md           # Contributor guide
+LICENSE                   # MIT
+README.md                 # User-facing docs
 VERSION                   # Current version (read by CLI)
 ```
 
@@ -42,13 +52,15 @@ The `franklin` CLI provides these commands:
 
 | Command | Description |
 |---------|-------------|
-| `franklin doctor [--json]` | Run diagnostic checks on the environment |
+| `franklin doctor [--json]` | Diagnostic checks: core tools (zsh, sheldon, starship, bat) plus, since v2.2.0, git/mise/eza and that `~/.zshrc` is the Franklin-managed symlink. `--json` output includes a `"status": "ok"/"fail"` field |
 | `franklin update [--dry-run] [--yes]` | Update Franklin core from git |
 | `franklin update-all [--dry-run] [--system]` | Update core, plugins, and optionally system packages |
 | `franklin config [--color NAME] [--services LIST]` | Configure MOTD color/services interactively or via flags |
 | `franklin uninstall [--yes]` | Unlink Franklin and restore backed-up dotfiles |
 | `franklin motd` | Display the Message of the Day banner |
 | `franklin --version` | Show version |
+
+Global flag: `--no-color` (on the app callback, before the subcommand — e.g. `franklin --no-color doctor`) disables color output. Resolved by `_resolve_no_color()` in `main.py`, which ORs the flag with the `NO_COLOR`/`FRANKLIN_NO_COLOR` env vars.
 
 ## Development Workflow
 
@@ -74,13 +86,23 @@ franklin doctor
 pytest test/test_cli.py -v
 
 # Test installer (non-interactive)
-# Accepts: --non-interactive / --color NAME / --with-claude / --no-claude
+# Accepts: --non-interactive / --color NAME / --with-claude / --no-claude / --no-chsh
 # Color NAME is case- and separator-insensitive: "ember", "Ember", "mauve-earth", "Mauve Earth" all resolve.
 bash franklin/src/install.sh --non-interactive --color cello --no-claude
 
 # Test bootstrap
 bash franklin/src/bootstrap.sh --dir /tmp/franklin-test --ref main
 ```
+
+### Definition of Done (CI)
+
+`.github/workflows/ci.yml` runs on every push and PR to `main`: **CLI smokes on macOS and Ubuntu** (`--help`, `doctor --json`, `update --dry-run`, `update-all --dry-run [--system]`) in a venv with sheldon/starship/bat/zsh/mise stubbed on `PATH` and `~/.zshrc` linked to the template — doctor's v2.2.0 symlink check requires it.
+
+CI does **not** run the pytest suite. Before a change ships, at minimum:
+
+1. `pytest test/test_cli.py` passes locally (CI will not catch pytest regressions).
+2. The CI smokes are green on both OSes.
+3. Changes to `templates/zshrc.zsh` are verified in a live zsh (see the load-order contract under Code Style).
 
 ### Runtime managers bundled by install.sh
 
@@ -102,12 +124,19 @@ bash franklin/src/bootstrap.sh --dir /tmp/franklin-test --ref main
 - Source shared UI from `lib/ui.sh` (install.sh) or use minimal inline (bootstrap.sh)
 - Keep FRANKLIN_ROOT/CONFIG paths consistent with `constants.py`
 
+### Zsh template load order (`franklin/templates/zshrc.zsh`)
+
+Two invariants — both have caused shipped regressions, do not reorder these blocks:
+
+1. **Sheldon loads before `compinit`**, so plugins that extend `fpath` (zsh-completions) are seen by the completion system.
+2. Plugins that call `compdef` at source time (oh-my-zsh's git plugin does, ten times) would then hit `command not found: compdef`, because `compdef` only exists once `compinit` has run. A **queue-and-replay stub** (`zshrc.zsh:202-225`, commit 0128327) captures those calls during plugin loading and replays them right after `compinit` defines the real `compdef`.
+
 ### UI Conventions (Campfire)
 - **Hierarchy**: Headers (`⏺`) → Branches (`⎿`) → Logic (`∴`)
 - **Colors**: Error (Flamingo), Success (Sage), Warning (Golden Amber), Info (Cello) — all pulled from Campfire semantic-500 values. Source of truth: `constants.py` (`UI_*_COLOR`) and `lib/ui.sh` (`COLOR_*`).
 - **MOTD palette**: `CAMPFIRE_COLORS` mirrors the Campfire signature palette — 14 names (Cello, Terracotta, Sage, Golden Amber, Flamingo, Blue Calx, Clay, Ember, Hay, Moss, Pine, Dusk, Mauve Earth, Stone) plus `Black Rock` as a legacy alias for Stone. Variants (`base`/`dark`/`light`) come from the upstream 11-step scales; only Blue Calx uses scale-100 for `light` because the info scale is compressed.
 - **Stream separation**: UI to stderr, machine-readable data to stdout
-- **TTY-aware**: Respect `NO_COLOR` and `FRANKLIN_NO_COLOR` env vars
+- **TTY-aware**: Respect the global `--no-color` flag and the `NO_COLOR`/`FRANKLIN_NO_COLOR` env vars
 
 ## Commit Conventions
 
@@ -174,17 +203,20 @@ This playbook lives in this repo's `CLAUDE.md`, so it applies to Franklin only. 
 1. **Idempotent installs** - Re-running `install.sh` is always safe
 2. **Observable operations** - UI feedback via Campfire glyphs
 3. **Cross-platform** - Single codebase detects macOS/Debian/Fedora at runtime
-4. **Fast recovery** - Backups at `~/.local/share/franklin/backups/<timestamp>`
+4. **Fast recovery** - Backups at `<install root>/backups/<timestamp>`
 5. **Clean stdout** - Machine-readable output (JSON) on stdout; UI on stderr
 
 ## Important Paths
 
+These are **defaults** — since v2.2.0 the install root is relocatable via `bootstrap.sh --dir` (the zshrc resolves it from the `~/.zshrc` symlink target; the CLI from the `FRANKLIN_ROOT` env var, per `constants.py`), and the venv/backup paths key off the actual root.
+
 | Path | Purpose |
 |------|--------|
-| `~/.local/share/franklin` | Install root |
+| `~/.local/share/franklin` | Install root (default) |
+| `~/.local/bin/franklin` | Symlink to the venv's `franklin` entrypoint (created by `install.sh`, removed by `uninstall`) |
 | `~/.config/franklin/config.env` | User configuration (MOTD color, etc.) |
 | `~/.franklin.local.zsh` | User's private overrides (sourced by zshrc) |
-| `~/.local/share/franklin/backups/` | Pre-install backup snapshots |
+| `<install root>/backups/` | Pre-install backup snapshots |
 
 ## Platform Detection
 
@@ -195,11 +227,3 @@ Platform detection in `main.py:_detect_os_family()` returns:
 - `unknown` - Unsupported
 
 The shell installer (`install.sh`) uses equivalent logic inline.
-
-## Agent Personas
-
-Detailed persona briefs for AI agents live in `.codex/agents/`:
-- `cli-architect.md` - CLI UX and flag design
-- `unix-polyglot.md` - Cross-platform portability
-- `docs-architect.md` - Information architecture
-- `franklin-architect.md` - Franklin-specific domain knowledge
