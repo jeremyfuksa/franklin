@@ -10,6 +10,7 @@ and the project aims to follow [Semantic Versioning](https://semver.org/).
 ### Fixed
 
 - **`command not found: compdef` errors at shell startup (v2.2.0 regression).** Moving sheldon before `compinit` (so `zsh-completions` lands in `fpath` in time) broke plugins that call `compdef` at source time — oh-my-zsh's git plugin registers ten completions that way, and `compdef` only exists once `compinit` has run. The zshrc now installs a queueing stub before plugins load and replays the captured `compdef` calls right after `compinit` defines the real one, so both orderings' requirements are satisfied: `fpath` extensions precede `compinit`, and every plugin completion still registers.
+- **`[WARN] Error parsing format string git_status.stashed` on every prompt.** The starship config set `stashed = "$"`, and a bare `$` starts a variable in starship format strings. It is now escaped (`"\\$"`), so the stash indicator renders as a literal `$` without the warning.
 
 ## [2.2.0] - 2026-07-15
 
